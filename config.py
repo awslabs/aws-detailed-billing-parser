@@ -45,7 +45,7 @@ es_dbr = {
 		}
 	}
 }
-bulk_msg = {"RecordType" : [ "StatementTotal", "InvoiceTotal", "Rounding" ]}
+bulk_msg = {"RecordType" : [ "StatementTotal", "InvoiceTotal", "Rounding", "AccountTotal" ]}
 
 mapping = {
 	es_doctype: {

@@ -16,7 +16,7 @@
 ''' AWS Detailed Billing parser to Logstash/ElasticSearch '''
 
 __author__ = 'Rafael M. Koike'
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 __date__ = '2015-10-15'
 __maintainer__ = 'Rafael M. Koike'
 __email__ = 'koiker@amazon.com'
@@ -112,7 +112,10 @@ def parse(args):
                 file_out.write( json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ) ) )
                 file_out.write('\n')
             elif config.output == 2:
-                es.index( index=config.es_index, doc_type=config.es_doctype, body=json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ), ensure_ascii=False, encoding=config.encoding ) )
+                try:
+                    es.index( index=config.es_index, doc_type=config.es_doctype, body=json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ), ensure_ascii=False, encoding=config.encoding ) )
+                except:
+                    print( 'Error: ' + json.dumps( json_row) )    
         i=i+1
         pb.update(i) # Update Progressbar
 
