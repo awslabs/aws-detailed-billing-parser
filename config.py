@@ -49,6 +49,8 @@ bulk_msg = {"RecordType" : [ "StatementTotal", "InvoiceTotal", "Rounding", "Acco
 
 mapping = {
 	es_doctype: {
+        # _timestamp has been deprecated since Elasticsearch 2.0.0-beta2
+        # If you will run this script with Elasticsearch 2.0.0-beta2 or above you must comment the line below.
 		"_timestamp": {"enabled": "true", "path": es_timestamp, "format" : "YYYY-MM-dd HH:mm:ss"},
 		"properties": {
 			"LinkedAccountId": { "type": "string" },
