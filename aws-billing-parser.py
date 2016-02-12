@@ -23,12 +23,15 @@ __email__ = 'koiker@amazon.com'
 __status__ = 'Development'
 
 import argparse
+import boto3
 import csv
 import json
 import os
 import sys
+import time
 
 from datetime import datetime
+from datetime import timedelta
 
 from elasticsearch import Elasticsearch
 
@@ -54,6 +57,8 @@ def parse(args):
     config.es_month = args.month
     config.output = args.output_type
     config.csv_delimiter = args.csv_delimiter
+    config.update = args.update
+    config.check = args.check
 
     if config.json_filename is None:
         # use same name as the input file, but with '.json' extension
@@ -62,7 +67,7 @@ def parse(args):
 
     print( "AWS - Detailed Billing Records parser \n\n")
 
-    config.es_index = '{}-{:d}-{:d}'.format(
+    config.es_index = '{}-{:d}-{:0>2d}'.format(
             config.es_index,
             config.es_year,
             config.es_month)
@@ -107,15 +112,30 @@ def parse(args):
     i=1
     for json_row in csv_file:
         if not func.bulk_data( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) , config.bulk_msg ):
-            if DEBUG: print( json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ),ensure_ascii=False, encoding=config.encoding ) )
+            if DEBUG: print( json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ),
+                ensure_ascii=False, encoding=config.encoding ) )
             if config.output == 1:
                 file_out.write( json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ) ) )
                 file_out.write('\n')
             elif config.output == 2:
                 try:
-                    es.index( index=config.es_index, doc_type=config.es_doctype, body=json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ), ensure_ascii=False, encoding=config.encoding ) )
+                    if config.check:
+                        response = es.search_exists( index=config.es_index, doc_type=config.es_doctype, q='RecordId:'+ json_row['RecordId'])
+                        if response:
+                            print( 'Update record: (ToDo)' + json_row['RecordId'])
+                        else:
+                            try:
+                                es.index( index=config.es_index, doc_type=config.es_doctype, 
+                                    body=json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ), 
+                                        ensure_ascii=False, encoding=config.encoding ) )
+                            except:
+                                print( 'Error adding: ' + json.dumps( json_row) )
+                    else:
+                        es.index( index=config.es_index, doc_type=config.es_doctype, 
+                            body=json.dumps( func.split_subkeys( json.dumps( json_row, ensure_ascii=False, encoding=config.encoding ) ), 
+                                ensure_ascii=False, encoding=config.encoding ) )
                 except:
-                    print( 'Error: ' + json.dumps( json_row) )    
+                    print( 'Error adding: ' + json.dumps( json_row) )
         i=i+1
         pb.update(i) # Update Progressbar
 
@@ -130,6 +150,7 @@ def parse(args):
 if __name__ == '__main__':
 
     now = datetime.now()
+    start_time = time.time()
 
     parser = argparse.ArgumentParser(description='AWS detailed billing parser to Logstash or ElasticSearch')
     parser.add_argument('-i', '--input', required=True, help='Input file (expected to be a CSV file)')
@@ -145,6 +166,8 @@ if __name__ == '__main__':
                     OUTPUT_TO_FILE,
                     OUTPUT_TO_ELASTICSEARCH))
     parser.add_argument('-d', '--csv-delimiter', help='CSV delimiter (default is comma)')
+    parser.add_argument('-u', '--update', action='store_true', help='Update if current record exist in ES before add (Must use with --check)')
+    parser.add_argument('-c', '--check', action='store_true', help='Check if current lines exist in ES before add')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {}'.format(__version__))
     parser.set_defaults(
             elasticsearch_host='search-name-hash.region.es.amazonaws.com',
@@ -156,3 +179,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     parse(args)
+    elapsed_time = time.time() - start_time
+    print( 'Elapsed time: ' + str( timedelta( seconds=elapsed_time ) ) )

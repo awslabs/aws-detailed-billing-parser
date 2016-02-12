@@ -35,6 +35,7 @@ csv_filename = account_id + '-' + 'aws-billing-detailed-line-items-with-resource
 csv_delimiter = ','
 encoding = 'utf-8'  #This is the default encoding for most part of the files, but sometimes if the customer use latin/spanish characters you will need to change.
 encoding = 'iso-8859-1'
+update = False #True = Try to update existing documents in Elasticsearch index (Default to false to speed up)
 json_filename = csv_filename.split('.')[0] + '.json'
 
 output = 1   # 1 = file output, 2 = elasticsearch output
@@ -51,7 +52,7 @@ mapping = {
 	es_doctype: {
         # _timestamp has been deprecated since Elasticsearch 2.0.0-beta2
         # If you will run this script with Elasticsearch 2.0.0-beta2 or above you must comment the line below.
-		"_timestamp": {"enabled": "true", "path": es_timestamp, "format" : "YYYY-MM-dd HH:mm:ss"},
+		#"_timestamp": {"enabled": "true", "path": es_timestamp, "format" : "YYYY-MM-dd HH:mm:ss"},
 		"properties": {
 			"LinkedAccountId": { "type": "string" },
     		"InvoiceID": { "type": "string" },
