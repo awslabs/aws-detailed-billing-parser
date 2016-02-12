@@ -29,17 +29,8 @@ If you will save the file in JSON format and export later with the bulk function
 
 
 *TODO
-- Parse the arguments:
-* Output (1 = file/ 2 = ElasticSearch)
-* ES Host (search-name-hash.region.es.amazon.com or any other ElasticSearch server)
-* ES port (9200 for standard ElasticSearch installations or 80 for AWS ElasticSearch:defaut to 80 now)
 * Unzip (Extract the DBR from zip file)
 * S3 (Copy the source file from S3 bucket to local folder to process)
-
-- Incremental updates
-The DBR of the current month is incremental, so you have the same file updated many times per day.
-We must process the file and save a diff or already processed rows someware, the next time that you execute the program the already processed rows must be skiped to avoid multiples entries in the ElasticSearch.
-At this time if you want to avoid that you must delete the index (billing-YYYY.MM) and run again (All registers will be recreated)
 
 - Lambda compatible
 To be compatible with Lambda i must run in max 5min and depending on the size of the file this won't be possible, so i will probably need to include a new argument like: MAX ROWS and every call to lambda will process a maximum of 10000 rows for exemple. This will give us a previsibility that lambda will work in the correct timeframe.
@@ -56,3 +47,8 @@ Version 0.2 - 2015-10-26
 * Progresbar
 * Output options: 1 = file / 2 = ElasticSearch
 * ElasticSearch Mapping
+
+Version 0.3. - 2016-02-12
+* Added incremental updates with --check parameter (Now you can update the same file to the index without need to delete the index and reprocess the entirely file again)
+* Compatible with Elasticsearch 2.1 and above (Removed the _timestamp from mapping tha has been deprecated from 2.0 and above)
+* Included elapsed time to evaluate the time to process the file
