@@ -30,12 +30,16 @@ es_doctype = 'billing'
 es_year = str( datetime.datetime.now().year )
 es_month = str( datetime.datetime.now().month )
 es_timestamp = 'UsageStartDate' #fieldname that will be replaced by Timestamp
+es_index_delete = 0
 account_id = '01234567890'
 csv_filename = account_id + '-' + 'aws-billing-detailed-line-items-with-resources-and-tags-' + str(es_year) + '-' + str(es_month) + '.csv'
 csv_delimiter = ','
 encoding = 'utf-8'  #This is the default encoding for most part of the files, but sometimes if the customer use latin/spanish characters you will need to change.
 encoding = 'iso-8859-1'
+bulk_mode = 0
+bulk_size = 10000
 update = False #True = Try to update existing documents in Elasticsearch index (Default to false to speed up)
+check = False #True = Check if the current record exists before add new. (For incremental updates)
 json_filename = csv_filename.split('.')[0] + '.json'
 
 output = 1   # 1 = file output, 2 = elasticsearch output
@@ -55,9 +59,9 @@ mapping = {
 		#"_timestamp": {"enabled": "true", "path": es_timestamp, "format" : "YYYY-MM-dd HH:mm:ss"},
 		"properties": {
 			"LinkedAccountId": { "type": "string" },
-    		"InvoiceID": { "type": "string" },
+    		"InvoiceID": { "type": "string", "index" : "not_analyzed" },
     		"RecordType": { "type": "string" },
-    		"RecordId": { "type": "string" },
+    		"RecordId": { "type": "string", "index" : "not_analyzed" },
     		"UsageType": { "type": "string", "index" : "not_analyzed" },
     		"UsageEndDate": { "type": "date", "format" : "YYYY-MM-dd HH:mm:ss" },
     		"ItemDescription": { "type": "string", "index" : "not_analyzed" },
@@ -65,14 +69,14 @@ mapping = {
     		"RateId": { "type": "string" },
     		"Rate": { "type": "float" },
     		"AvailabilityZone": { "type": "string", "index" : "not_analyzed" },
-    		"PricingPlanId": { "type": "string" },
-    		"ResourceId": { "type": "string" },
+    		"PricingPlanId": { "type": "string", "index" : "not_analyzed"},
+    		"ResourceId": { "type": "string", "index" : "not_analyzed" },
     		"Cost": { "type": "float" },
-    		"PayerAccountId": { "type": "string" },
-    		"SubscriptionId": { "type": "string" },
+    		"PayerAccountId": { "type": "string", "index" : "not_analyzed" },
+    		"SubscriptionId": { "type": "string", "index" : "not_analyzed" },
     		"UsageQuantity": { "type": "float" },
     		"Operation": { "type": "string" },
-    		"ReservedInstance": { "type": "string" },
+    		"ReservedInstance": { "type": "string", "index" : "not_analyzed" },
     		"UsageStartDate": { "type": "date", "format" : "YYYY-MM-dd HH:mm:ss" },
             "BlendedCost" : { "type": "float" },
             "BlendedRate" : { "type": "float" },
