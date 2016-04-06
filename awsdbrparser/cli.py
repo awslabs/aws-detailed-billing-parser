@@ -17,7 +17,9 @@
 # limitations under the License.
 #
 import datetime
+import os
 import time
+import sys
 
 import click
 
@@ -86,6 +88,9 @@ def main(config, *args, **kwargs):
     kwargs['es_month'] = kwargs.pop('month', config.es_month)
 
     config.update_from(**kwargs)
+
+    if not os.path.isfile(config.input_filename):
+        sys.exit('Input file not found: {}'.format(config.input_filename))
 
     start = time.time()
     parser.parse(config, verbose=(not quiet))

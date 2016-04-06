@@ -186,5 +186,5 @@ class Config(object):
 
     def _sugest_filename(self, extension):
         return '{}-aws-billing-detailed-line-items-with-'\
-                'resources-and-tags-{}-{}{}'.format(
+                'resources-and-tags-{:04d}-{:02d}{}'.format(
                         self.account_id, self.es_year, self.es_month, extension)
