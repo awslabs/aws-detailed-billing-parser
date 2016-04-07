@@ -1,6 +1,10 @@
-# Ignore gzip files
-*.gz
-# Ignore pre-compiled python code
 *.pyc
-# Ignore cached files from Python 3
 *.__pycache__
+
+dist/
+build/
+*.egg-info/
+
+.cache/
+.tox/
+.coverage
