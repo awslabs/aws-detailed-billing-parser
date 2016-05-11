@@ -65,7 +65,7 @@ def parse(config, verbose=False):
 
     elif config.output_to_elasticsearch:
         echo('Sending DBR to Elasticsearch host: {}:{}'.format(config.es_host, config.es_port))
-        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}])
+        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=30)
         if config.delete_index:
             echo('Deleting current index: {}'.format(index_name))
             es.indices.delete(index_name, ignore=404)

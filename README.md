@@ -56,6 +56,10 @@ previsibility that lambda will work in the correct timeframe;
 
 ## Changes
 
+### Version 0.4.1 - 2016-05-11
+
+* Bugfix of timeout when sending by bulk (Increased to 30 seconds)
+
 ### Version 0.4.0 - 2016-03-27
 
 * Project was completely restructured in order to create a proper Python

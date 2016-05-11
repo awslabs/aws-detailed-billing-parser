@@ -83,6 +83,7 @@ class Config(object):
         self.es_year = today.year
         self.es_month = today.month
         self.es_timestamp = 'UsageStartDate'  # fieldname that will be replaced by Timestamp
+        self.es_timeout = 30 
 
         # aws account id
         self.account_id = '01234567890'
