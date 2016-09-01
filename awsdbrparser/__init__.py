@@ -19,5 +19,5 @@
 
 __author__ = "Rafael M. Koike"
 __email__ = "koiker@amazon.com"
-__date__ = "2015-10-15"
-__version__ = '0.4.1'
+__date__ = "2016-08-31"
+__version__ = '0.4.2'

@@ -56,6 +56,11 @@ previsibility that lambda will work in the correct timeframe;
 
 ## Changes
 
+### Version 0.4.1 - 2016-08-31
+
+* Changed requirements to support newer versions of boto3. 
+(Due to some other softwares that need version 1.3.1 or higher, dbrparser is conflicting with other softwares)
+
 ### Version 0.4.1 - 2016-05-11
 
 * Bugfix of timeout when sending by bulk (Increased to 30 seconds)
