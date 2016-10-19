@@ -21,8 +21,8 @@ from __future__ import print_function
 import collections
 import csv
 import json
-import time
 import threading
+import time
 
 import boto3
 import click
@@ -75,26 +75,34 @@ def analytics(config):
             continue
 
         else:
-            analytics_list.append(json.dumps(utils.pre_process(
-                json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))))
+            analytics_list.append(utils.pre_process(json_row))
             date_set.add(json_row.get('UsageStartDate'))
 
     # Lets work with the Analytics list
-    print(date_set)
+    response = ec2_per_usd(analytics_list, date_set)
 
     file_in.close()
 
 
-def ec2_per_usd(items):
+def ec2_per_usd(items, timeset):
     """
     This function receive a list of DBRrt dict and return a new list with dict items to send to Elasticsearch
+
+    :param timeset:
     :param items:
     :return analytics_list:
     """
     analytics_list = list()
-    for key, value in items:
+    # Iterate over the timerange and count the number of instances per hour
+    for line in timeset:
+        ec2_count = (item for item in items if
+                     item.get('UsageStartDate') == line and
+                     item.get('ProductName') == 'Amazon Elastic Compute Cloud'
+                     and 'RunInstances' in item.get('Operation'))
+        analytics_list.append(ec2_count)
 
-
+    for item in analytics_list:
+        print(item)
 
 
 def parse(config, verbose=False):

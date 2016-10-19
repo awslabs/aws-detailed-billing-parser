@@ -41,8 +41,8 @@ def pre_process(json_string):
     :returns: json string
     :rtype: str
     """
-
-    json_key = json.loads(json_string)
+    # json_key = json.loads(json_string)
+    json_key = json_string
     temp_json = dict()
     for key, value in json_key.items():
         if ':' in key:
