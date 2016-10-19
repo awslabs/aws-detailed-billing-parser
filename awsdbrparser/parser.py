@@ -21,15 +21,17 @@ from __future__ import print_function
 import collections
 import csv
 import json
+import time
+import threading
 
+import boto3
 import click
-
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch import helpers
+from requests_aws4auth import AWS4Auth
 
-from .config import PROCESS_BY_BULK
 from . import utils
-
+from .config import PROCESS_BY_BULK, PROCESS_BY_LINE, PROCESS_BI_ONLY
 
 Summary = collections.namedtuple('Summary', 'added skipped updated control_messages')
 """
@@ -41,31 +43,97 @@ class ParserError(Exception):
     pass
 
 
+def analytics(config):
+    """
+    This function generate extra information in elasticsearch analyzing the lineitems of the file
+    :param config:
+    :return:
+    """
+    index_name = '{}-{:d}-{:02d}'.format(
+        config.es_index,
+        config.es_year,
+        config.es_month)
+
+    # Opening Input filename again to run in parallel
+    file_in = open(config.input_filename, 'r')
+    awsauth = None
+    if config.awsauth:
+        session = boto3.Session()
+        credentials = session.get_credentials()
+        if credentials:
+            region = session.region_name
+            awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, 'es',
+                               session_token=credentials.token)
+
+    es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=30, http_auth=awsauth,
+                       connection_class=RequestsHttpConnection)
+    csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
+    analytics_list = list()
+    date_set = set()
+    for recno, json_row in enumerate(csv_file):
+        if is_control_message(json_row, config):
+            continue
+
+        else:
+            analytics_list.append(json.dumps(utils.pre_process(
+                json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))))
+            date_set.add(json_row.get('UsageStartDate'))
+
+    # Lets work with the Analytics list
+    print(date_set)
+
+    file_in.close()
+
+
+def ec2_per_usd(items):
+    """
+    This function receive a list of DBRrt dict and return a new list with dict items to send to Elasticsearch
+    :param items:
+    :return analytics_list:
+    """
+    analytics_list = list()
+    for key, value in items:
+
+
+
+
 def parse(config, verbose=False):
     """
 
+    :param verbose:
     :param config: An instance of :class:`~awsdbrparser.config.Config` class,
         used for parsing parametrization.
 
     :rtype: Summary
     """
+    global analytics_start
     echo = utils.ClickEchoWrapper(quiet=(not verbose))
 
     index_name = '{}-{:d}-{:02d}'.format(
-            config.es_index,
-            config.es_year,
-            config.es_month)
+        config.es_index,
+        config.es_year,
+        config.es_month)
 
     echo('Opening input file: {}'.format(config.input_filename))
-    file_in = open(config.input_filename, 'rb')
+    file_in = open(config.input_filename, 'r')
 
     if config.output_to_file:
         echo('Opening output file: {}'.format(config.output_filename))
-        file_out = open(config.output_filename, 'wb')
+        file_out = open(config.output_filename, 'w')
 
     elif config.output_to_elasticsearch:
         echo('Sending DBR to Elasticsearch host: {}:{}'.format(config.es_host, config.es_port))
-        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=30)
+        awsauth = None
+        if config.awsauth:
+            session = boto3.Session()
+            credentials = session.get_credentials()
+            if credentials:
+                region = session.region_name
+                awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, 'es',
+                                   session_token=credentials.token)
+
+        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=30, http_auth=awsauth,
+                           connection_class=RequestsHttpConnection)
         if config.delete_index:
             echo('Deleting current index: {}'.format(index_name))
             es.indices.delete(index_name, ignore=404)
@@ -81,7 +149,7 @@ def parse(config, verbose=False):
 
         echo("Input file has {} record(s)".format(record_count))
 
-        if config.bulk_mode == PROCESS_BY_BULK:
+        if config.process_mode == PROCESS_BY_BULK:
             echo('Processing in BULK MODE, size: {}'.format(config.bulk_size))
         else:
             echo('Processing in LINE MODE')
@@ -90,9 +158,16 @@ def parse(config, verbose=False):
         progressbar = utils.null_progressbar
         record_count = 0
 
+    # If BI is enabled, create a thread and start running
+    if config.analytics:
+        analytics_start = time.time()
+        echo('Starting the BI Analytics Thread')
+        thread = threading.Thread(target=analytics, args=(config,))
+        thread.start()
+
     added = skipped = updated = control = 0
 
-    if config.bulk_mode == PROCESS_BY_BULK:
+    if config.process_mode == PROCESS_BY_BULK:
         with progressbar(length=record_count) as pbar:
             # If you wish to sort the records by UsageStartDate before send to
             # ES just uncomment the 2 lines below and comment the third line
@@ -105,14 +180,16 @@ def parse(config, verbose=False):
                     if not is_control_message(json_row, config):
                         if config.debug:
                             print(json.dumps(  # do not use 'echo()' here
-                                    utils.split_subkeys(
-                                            json.dumps(json_row, ensure_ascii=False, encoding=config.encoding)),
-                                    ensure_ascii=False, encoding=config.encoding))
-                        yield utils.split_subkeys(json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))
+                                utils.pre_process(
+                                    json.dumps(json_row, ensure_ascii=False, encoding=config.encoding)),
+                                ensure_ascii=False, encoding=config.encoding))
+                        yield utils.pre_process(json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))
                         pbar.update(1)
 
             for recno, (success, result) in enumerate(helpers.streaming_bulk(es, documents(),
-                            index=index_name, doc_type=config.es_doctype, chunk_size=config.bulk_size)):
+                                                                             index=index_name,
+                                                                             doc_type=config.es_doctype,
+                                                                             chunk_size=config.bulk_size)):
                 # <recno> integer, the record number (0-based)
                 # <success> bool
                 # <result> a dictionary like this one:
@@ -141,7 +218,7 @@ def parse(config, verbose=False):
                 else:
                     added += 1
 
-    else:
+    elif config.process_mode == PROCESS_BY_LINE:
         with progressbar(length=record_count) as pbar:
             csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
             for recno, json_row in enumerate(csv_file):
@@ -150,13 +227,13 @@ def parse(config, verbose=False):
                 else:
                     if config.debug:
                         print(json.dumps(  # do not use 'echo()' here
-                                utils.split_subkeys(
-                                        json.dumps(json_row, ensure_ascii=False, encoding=config.encoding)),
-                                ensure_ascii=False, encoding=config.encoding))
+                            utils.pre_process(
+                                json.dumps(json_row, ensure_ascii=False, encoding=config.encoding)),
+                            ensure_ascii=False, encoding=config.encoding))
 
                     if config.output_to_file:
-                        file_out.write(json.dumps(utils.split_subkeys(
-                                json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))))
+                        file_out.write(json.dumps(utils.pre_process(
+                            json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))))
                         file_out.write('\n')
                         added += 1
 
@@ -166,7 +243,7 @@ def parse(config, verbose=False):
                             # FIXME: use `es.search` with the following sample body: `{'query': {'match': {'RecordId': '43347302922535274380046564'}}}`; # noqa
                             # SEE: https://elasticsearch-py.readthedocs.org/en/master/api.html#elasticsearch.Elasticsearch.search; # noqa
                             response = es.search_exists(index=index_name, doc_type=config.es_doctype,
-                                    q='RecordId:{}'.format(json_row['RecordId']))
+                                                        q='RecordId:{}'.format(json_row['RecordId']))
                             if response:
                                 if config.update:
                                     # TODO: requires _id from the existing document
@@ -177,7 +254,7 @@ def parse(config, verbose=False):
                                     skipped += 1
                             else:
                                 response = es.index(index=index_name, doc_type=config.es_doctype,
-                                        body=body_dump(json_row, config))
+                                                    body=body_dump(json_row, config))
                                 if not es_index_successful(response):
                                     message = 'Failed to index record {:d} with result {!r}'.format(recno, response)
                                     if config.fail_fast:
@@ -188,7 +265,7 @@ def parse(config, verbose=False):
                                     added += 1
                         else:
                             response = es.index(index=index_name, doc_type=config.es_doctype,
-                                    body=body_dump(json_row, config))
+                                                body=body_dump(json_row, config))
                             if not es_index_successful(response):
                                 message = 'Failed to index record {:d} with result {!r}'.format(recno, response)
                                 if config.fail_fast:
@@ -199,6 +276,18 @@ def parse(config, verbose=False):
                                 added += 1
 
                 pbar.update(1)
+    elif config.process_mode == PROCESS_BI_ONLY and config.analytics:
+        echo('Processing Analytics Only')
+        while thread.is_alive():
+            # Wait for a timeout
+            analytics_now = time.time()
+            if analytics_start - analytics_now > config.analytics_timeout * 60:
+                echo('Analytics processing timeout. exiting')
+                break
+            time.sleep(5)
+
+    else:
+        echo('Nothing to do!')
 
     file_in.close()
 
@@ -222,15 +311,15 @@ def parse(config, verbose=False):
 def is_control_message(record, config):
     # <record> record dict
     # <config> an instance of `awsdbrparser.config.Config`
-    data = json.dumps(record, ensure_ascii=False, encoding=config.encoding)
-    return utils.bulk_data(data, config.bulk_msg)
+    # data = json.dumps(record, ensure_ascii=False, encoding=config.encoding)
+    return utils.bulk_data(record, config.bulk_msg)
 
 
 def body_dump(record, config):
     # <record> record dict
     # <config> an instance of `awsdbrparser.config.Config`
-    body = json.dumps(utils.split_subkeys(json.dumps(record, ensure_ascii=False, encoding=config.encoding)),
-            ensure_ascii=False, encoding=config.encoding)
+    body = json.dumps(utils.pre_process(json.dumps(record, ensure_ascii=False, encoding=config.encoding)),
+                      ensure_ascii=False, encoding=config.encoding)
     return body
 
 

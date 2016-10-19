@@ -41,13 +41,13 @@ def read(*filenames, **kwargs):
 
 def read_version():
     content = read(os.path.join(
-            os.path.dirname(__file__), 'awsdbrparser', '__init__.py'))
+        os.path.dirname(__file__), 'awsdbrparser', '__init__.py'))
     return re.search(r"__version__ = '([^']+)'", content).group(1)
 
 
 def read_requirements():
     content = read(os.path.join('requirements', 'base.txt'))
-    return [line for line in content.split(os.linesep) \
+    return [line for line in content.split(os.linesep)
             if not line.strip().startswith('#')]
 
 

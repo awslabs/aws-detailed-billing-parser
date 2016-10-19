@@ -56,7 +56,28 @@ previsibility that lambda will work in the correct timeframe;
 
 ## Changes
 
-### Version 0.4.1 - 2016-08-31
+### Version 0.5.0 - 2016-10-11
+
+* Included Dynamic Template to new document fields be Not Analyzed
+* Included support to AWS Signed V4 requests.
+If you are running the program from an EC2 instance or from a computer 
+that has installed aws cli and configured with the correct credentials
+ you just need to include`--awsauth` parameter
+* Changed the split_keys function to pre_process and include extra information
+based on the UsageType field
+Now you have:
+    * UsageItem with the options: 
+        - On-Demand
+        - Reserved Instance
+        - Spot Instance
+    * InstanceType with only the instance name extracted from the UsageType
+    
+* Added the option of Analytics processing only. -bm 3 or --processing-mode 3
+
+    With this option you can run only analytics or lineitems and analytics in parallel threads.
+
+
+### Version 0.4.2 - 2016-08-31
 
 * Changed requirements to support newer versions of boto3. 
 (Due to some other softwares that need version 1.3.1 or higher, dbrparser is conflicting with other softwares)

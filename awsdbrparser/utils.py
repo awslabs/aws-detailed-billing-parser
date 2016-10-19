@@ -24,10 +24,18 @@ import click
 from . import __version__
 
 
-def split_subkeys(json_string):
+def pre_process(json_string):
     """
-    Find json keys like ``"{key.subkey: value}"`` and replaces
-    with ``"{key : {subkey: value}}"``.
+    Find json keys like '{"key:subkey": "value"}' and replaces
+    with '{"key" : {"subkey" : "value"}}'.
+
+    Get items that are EC2 running and evaluate if the instance is:
+    * On-Demand
+    * Reserved Instance
+    * Spot
+    The result is included in the field: UsageItem
+
+    The instance size is included in the new field: InstanceType
 
     :param str json_string:
     :returns: json string
@@ -35,15 +43,32 @@ def split_subkeys(json_string):
     """
 
     json_key = json.loads(json_string)
-    temp_json = {}
+    temp_json = dict()
     for key, value in json_key.items():
-        index = key.find(':')
-        if index > -1:
-            if temp_json.get(key[:index], 1) == 1:
-                temp_json[key[:index]] = {}
-            temp_json[key[:index]][key[index + 1:]] = value
+        if ':' in key:
+            # This key has COLON, let's try to split this key in key/subkey
+            new_key, subkey = key.split(':', 1)
+            temp_json.setdefault(new_key, {}).setdefault(subkey, value)
         else:
-            temp_json.update({key: value})
+            temp_json.setdefault(key, value)
+
+    temp_json['UsageItem'] = ''
+
+    if temp_json.get('ProductName') == 'Amazon Elastic Compute Cloud' and 'RunInstances' in temp_json.get('Operation'):
+        # Some lineitems contain strings like: "RunInstances:002".
+        if temp_json.get('ReservedInstance', '') == 'Y':
+            temp_json['UsageItem'] = 'Reserved Instance'
+            temp_json['InstanceType'] = temp_json['UsageType'].split(':')[1]
+
+        elif 'BoxUsage' in temp_json.get('UsageType', ' '):
+            # If this LineItem is a EC2 instance running we include 'EC2-Running'
+            temp_json['UsageItem'] = 'On-Demand'
+            temp_json['InstanceType'] = temp_json['UsageType'].split(':')[1]
+
+        elif 'SpotUsage' in temp_json.get('UsageType', ' '):
+            temp_json['UsageItem'] = 'Spot Instance'
+            temp_json['InstanceType'] = temp_json['UsageType'].split(':')[1]
+
     return temp_json
 
 
@@ -51,17 +76,17 @@ def bulk_data(json_string, bulk):
     """
     Check if json has bulk data/control messages. The string to check are in
     format: ``{key : [strings]}``.
+    If the key/value is found return True else False
 
     :param str json_string:
     :param bool bulk:
     :returns: True if found a control message and False if not.
     :rtype: bool
     """
-    json_key = json.loads(json_string)
     for key, value in bulk.items():
-        if key in json_key.keys():
-            for v in bulk[key]:
-                if json_key[key].find(v) > -1:
+        if key in json_string.keys():
+            for line in value:
+                if json_string.get(key) == line:
                     return True
     return False
 
