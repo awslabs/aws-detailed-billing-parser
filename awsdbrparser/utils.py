@@ -24,7 +24,7 @@ import click
 from . import __version__
 
 
-def pre_process(json_string):
+def pre_process(json_dict):
     """
     Find json keys like '{"key:subkey": "value"}' and replaces
     with '{"key" : {"subkey" : "value"}}'.
@@ -37,14 +37,12 @@ def pre_process(json_string):
 
     The instance size is included in the new field: InstanceType
 
-    :param str json_string:
-    :returns: json string
-    :rtype: str
+    :param dict json_dict:
+    :returns: json dict
+    :rtype: dict
     """
-    # json_key = json.loads(json_string)
-    json_key = json_string
     temp_json = dict()
-    for key, value in json_key.items():
+    for key, value in json_dict.items():
         if ':' in key:
             # This key has COLON, let's try to split this key in key/subkey
             new_key, subkey = key.split(':', 1)

@@ -26,8 +26,7 @@ import time
 
 import boto3
 import click
-from elasticsearch import Elasticsearch, RequestsHttpConnection
-from elasticsearch import helpers
+from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
 from requests_aws4auth import AWS4Auth
 
 from . import utils
@@ -43,9 +42,10 @@ class ParserError(Exception):
     pass
 
 
-def analytics(config):
+def analytics(config, echo):
     """
     This function generate extra information in elasticsearch analyzing the lineitems of the file
+    :param echo:
     :param config:
     :return:
     """
@@ -69,40 +69,96 @@ def analytics(config):
                        connection_class=RequestsHttpConnection)
     csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
     analytics_list = list()
-    date_set = set()
     for recno, json_row in enumerate(csv_file):
         if is_control_message(json_row, config):
             continue
 
         else:
             analytics_list.append(utils.pre_process(json_row))
-            date_set.add(json_row.get('UsageStartDate'))
 
     # Lets work with the Analytics list
-    response = ec2_per_usd(analytics_list, date_set)
+    # First we generate a new list with only EC2 instances to improve speed
+    temp_items = list(line for line in analytics_list if line.get('ProductName') == 'Amazon Elastic Compute Cloud'
+                      and 'RunInstances' in line.get('Operation') and line.get('UsageItem'))
+    # Lets generate the date list for days where we have EC2 executed
+    date_set = set(line.get('UsageStartDate') for line in temp_items)
+    # This list has only YMD instead of YMD + hour
+    day_set = set(item.split(' ')[0] for item in date_set)
+    instances_list = list()
+    # EC2 Instances per USD
+    # Iterate over the time range and count the number of instances per hour
+    for line in date_set:
+        ec2_count = 0
+        ec2_count_ri_only = 0
+        ec2_count_spot_only = 0
+        ec2_list = list()
+        for item in temp_items:
+            if item.get('UsageStartDate') == line:
+                ec2_list.append(item)
+                ec2_count += 1
+                if item.get('UsageItem') == 'Reserved Instance':
+                    # Filter ec2_count to remove RI
+                    ec2_count_ri_only += 1
+
+                if item.get('UsageItem') == 'Spot Instance':
+                    # Count Spot Only
+                    ec2_count_spot_only += 1
+
+        result_unblended = 0.0
+        result_cost = 0.0
+
+        avg_unblended = sum(float(line.get('UnBlendedCost', 0)) for line in ec2_list) / ec2_count
+        avg_cost = sum(float(line.get('Cost', 0)) for line in ec2_list) / ec2_count
+
+        # Some DBR files has Cost (Single Account) and some has (Un)BlendedCost (Consolidated Account)
+        # In this case we try to process both, but one will be zero and we need to check
+        if avg_unblended:
+            result_unblended = 1.0 / avg_unblended
+
+        if avg_cost:
+            result_cost = 1.0 / avg_cost
+
+        response = es.index(index=index_name, doc_type='ec2_per_usd',
+                            body={'UsageStartDate': ec2_list[0].get('UsageStartDate'),
+                                  'EPU_Cost': result_cost,
+                                  'EPU_UnBlended': result_unblended})
+
+        instances_list.append((line,
+                               line.split(' ')[0],
+                               ec2_count,
+                               ec2_count_ri_only,
+                               ec2_count_spot_only,)
+                              )
+    # Elasticity
+    #
+    # The calculation is 1 - min / max EC2 instances per day
+    # The number of EC2 instances has been calculated previously
+    # and appended in the ec2_list
+    #
+    for line in day_set:
+        ec2_min = min(item[2] - item[3] for item in instances_list if item[1] == line)
+        ec2_max = max(item[2] - item[3] for item in instances_list if item[1] == line)
+        if ec2_max:
+            elasticity = 1.0 - float(ec2_min) / float(ec2_max)
+        else:
+            elasticity = 1.0
+
+        ri_coverage = sum(float(item[3]) / float(item[2]) for item in instances_list if item[1] == line)
+        ri_count = sum(1 for item in instances_list if item[1] == line)
+        ri_coverage /= ri_count
+        spot_coverage = sum(float(item[4]) / float(item[2]) for item in instances_list if item[1] == line)
+        spot_count = sum(1 for item in instances_list if item[1] == line)
+        spot_coverage /= spot_count
+
+        response = es.index(index=index_name, doc_type='elasticity',
+                            body={'UsageStartDate': line + ' 12:00:00',
+                                  'Elasticity': elasticity,
+                                  'ReservedCoverage': ri_coverage,
+                                  'SpotCoverage': spot_coverage})
 
     file_in.close()
-
-
-def ec2_per_usd(items, timeset):
-    """
-    This function receive a list of DBRrt dict and return a new list with dict items to send to Elasticsearch
-
-    :param timeset:
-    :param items:
-    :return analytics_list:
-    """
-    analytics_list = list()
-    # Iterate over the timerange and count the number of instances per hour
-    for line in timeset:
-        ec2_count = (item for item in items if
-                     item.get('UsageStartDate') == line and
-                     item.get('ProductName') == 'Amazon Elastic Compute Cloud'
-                     and 'RunInstances' in item.get('Operation'))
-        analytics_list.append(ec2_count)
-
-    for item in analytics_list:
-        print(item)
+    # Finished Processing
+    return
 
 
 def parse(config, verbose=False):
@@ -114,7 +170,6 @@ def parse(config, verbose=False):
 
     :rtype: Summary
     """
-    global analytics_start
     echo = utils.ClickEchoWrapper(quiet=(not verbose))
 
     index_name = '{}-{:d}-{:02d}'.format(
@@ -152,7 +207,7 @@ def parse(config, verbose=False):
         progressbar = click.progressbar
 
         # calculate number of rows in input file in preparation to display a progress bar
-        record_count = sum(1 for row in file_in) - 1
+        record_count = sum(1 for _ in file_in) - 1
         file_in.seek(0)  # reset file descriptor
 
         echo("Input file has {} record(s)".format(record_count))
@@ -167,10 +222,10 @@ def parse(config, verbose=False):
         record_count = 0
 
     # If BI is enabled, create a thread and start running
+    analytics_start = time.time()
     if config.analytics:
-        analytics_start = time.time()
         echo('Starting the BI Analytics Thread')
-        thread = threading.Thread(target=analytics, args=(config,))
+        thread = threading.Thread(target=analytics, args=(config, echo,))
         thread.start()
 
     added = skipped = updated = control = 0
@@ -188,10 +243,8 @@ def parse(config, verbose=False):
                     if not is_control_message(json_row, config):
                         if config.debug:
                             print(json.dumps(  # do not use 'echo()' here
-                                utils.pre_process(
-                                    json.dumps(json_row, ensure_ascii=False, encoding=config.encoding)),
-                                ensure_ascii=False, encoding=config.encoding))
-                        yield utils.pre_process(json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))
+                                utils.pre_process(json_row)))
+                        yield json.dumps(utils.pre_process(json_row))
                         pbar.update(1)
 
             for recno, (success, result) in enumerate(helpers.streaming_bulk(es, documents(),
@@ -235,13 +288,12 @@ def parse(config, verbose=False):
                 else:
                     if config.debug:
                         print(json.dumps(  # do not use 'echo()' here
-                            utils.pre_process(
-                                json.dumps(json_row, ensure_ascii=False, encoding=config.encoding)),
+                            utils.pre_process(json_row),
                             ensure_ascii=False, encoding=config.encoding))
 
                     if config.output_to_file:
-                        file_out.write(json.dumps(utils.pre_process(
-                            json.dumps(json_row, ensure_ascii=False, encoding=config.encoding))))
+                        file_out.write(
+                            json.dumps(utils.pre_process(json_row), ensure_ascii=False, encoding=config.encoding))
                         file_out.write('\n')
                         added += 1
 
@@ -326,8 +378,7 @@ def is_control_message(record, config):
 def body_dump(record, config):
     # <record> record dict
     # <config> an instance of `awsdbrparser.config.Config`
-    body = json.dumps(utils.pre_process(json.dumps(record, ensure_ascii=False, encoding=config.encoding)),
-                      ensure_ascii=False, encoding=config.encoding)
+    body = json.dumps(utils.pre_process(record), ensure_ascii=False, encoding=config.encoding)
     return body
 
 
