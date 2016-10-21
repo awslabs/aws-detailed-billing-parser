@@ -65,7 +65,7 @@ def analytics(config, echo):
             awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, 'es',
                                session_token=credentials.token)
 
-    es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=30, http_auth=awsauth,
+    es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
                        connection_class=RequestsHttpConnection)
     csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
     analytics_list = list()
@@ -195,7 +195,7 @@ def parse(config, verbose=False):
                 awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, 'es',
                                    session_token=credentials.token)
 
-        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=30, http_auth=awsauth,
+        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
                            connection_class=RequestsHttpConnection)
         if config.delete_index:
             echo('Deleting current index: {}'.format(index_name))

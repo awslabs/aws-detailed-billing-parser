@@ -29,6 +29,8 @@ from .config import OUTPUT_OPTIONS
 from .config import OUTPUT_TO_FILE
 from .config import PROCESS_BY_LINE
 from .config import PROCESS_OPTIONS
+from .config import BULK_SIZE
+from .config import ES_TIMEOUT
 from .utils import ClickEchoWrapper
 from .utils import display_banner
 from .utils import hints_for
@@ -42,7 +44,7 @@ configure = click.make_pass_decorator(Config, ensure=True)
 @click.option('-o', '--output', metavar='FILE', help='Output file (will generate a JSON file).')
 @click.option('-e', '--es-host', metavar='HOST', help='Elasticsearch host name or IP address.')
 @click.option('-p', '--es-port', type=int, metavar='PORT', help='Elasticsearch port number.')
-@click.option('-to', '--es-timeout', type=int, metavar='TIMEOUT', help='Elasticsearch connection Timeout.')
+@click.option('-to', '--es-timeout', type=int, default=ES_TIMEOUT, metavar='TIMEOUT', help='Elasticsearch connection Timeout.')
 @click.option('-ei', '--es-index', metavar='INDEX', help='Elasticsearch index prefix.')
 @click.option('-bi','--analytics', is_flag=True, default=False,
               help='Execute analytics on file to generate extra-information')
@@ -59,7 +61,7 @@ configure = click.make_pass_decorator(Config, ensure=True)
               type=click.Choice(values_of(PROCESS_OPTIONS)),
               help='Send DBR line-by-line or in bulk ({}, bulk mode implies sending '
                    'data to an Elasticsearch instance).'.format(hints_for(PROCESS_OPTIONS)))
-@click.option('-bs', '--bulk-size', default=10000, metavar='BULK_SIZE',
+@click.option('-bs', '--bulk-size', default=BULK_SIZE, metavar='BS',
               help='Define the size of bulk to send to (see --bulk-mode option).')
 @click.option('-u', '--update', is_flag=True, default=False,
               help='Update existing documents in Elasticseaerch index before add (should be used with --check flag).')

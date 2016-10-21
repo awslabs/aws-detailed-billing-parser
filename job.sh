@@ -43,7 +43,7 @@ aws s3 cp $BUCKET/$ZIP_FILE .
 unzip -o  $ZIP_FILE
 
 # Process the file with dbrparser
-dbrparser -i $DBR_FILE -e $ES_HOST -p $ES_PORT -t 2 -bm 2 -y $YEAR -m $MONTH --delete-index
+dbrparser -i $DBR_FILE -e $ES_HOST -p $ES_PORT -t 2 -bm 2 -y $YEAR -m $MONTH --delete-index -bi
 
 # Remove processed file
 rm $DBR_FILE

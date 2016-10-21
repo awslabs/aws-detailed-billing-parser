@@ -35,6 +35,9 @@ PROCESS_OPTIONS = (
     (PROCESS_BY_BULK, 'Process in Bulk'),
     (PROCESS_BI_ONLY, 'Process BI Only'))
 
+BULK_SIZE = 1000
+ES_TIMEOUT = 30
+
 ES_DOCTYPE = {
     "properties": {
         "LinkedAccountId": {"type": "string"},
@@ -92,7 +95,7 @@ class Config(object):
         self.es_year = today.year
         self.es_month = today.month
         self.es_timestamp = 'UsageStartDate'  # fieldname that will be replaced by Timestamp
-        self.es_timeout = 30
+        self.es_timeout = ES_TIMEOUT
 
         # aws account id
         self.account_id = '01234567890'
@@ -140,7 +143,7 @@ class Config(object):
         self.csv_delimiter = ','
         self._output_type = OUTPUT_TO_FILE
         self._bulk_mode = PROCESS_BY_LINE
-        self.bulk_size = 10000
+        self.bulk_size = BULK_SIZE
         self.bulk_msg = {
             "RecordType": [
                 "StatementTotal",

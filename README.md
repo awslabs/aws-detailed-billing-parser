@@ -76,6 +76,8 @@ Now you have:
 
     With this option you can run only analytics or lineitems and analytics in parallel threads.
 
+* Reduced the Bulk size from 10000 to 1000 due to changes in the Elasticsearch Service and to improve the reability of the transmission
+This could lead to a little more time to process but will reduce the chance of buffer errors
 
 ### Version 0.4.2 - 2016-08-31
 
