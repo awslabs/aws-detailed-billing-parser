@@ -59,7 +59,7 @@ setup(
     author='Rafael M. Koike',
     author_email='koiker@amazon.com',
     description='Parse DBR and send to Elasticsearch or dumps to JSON',
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     zip_safe=False,
