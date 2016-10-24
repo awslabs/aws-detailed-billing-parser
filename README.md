@@ -19,6 +19,16 @@ repository and use `setup.py` script to install it. For requirements see
 the `requirements/base.txt` file. Clone this repository and install
 using plain python and the `setup.py` script. For example:
 
+
+* This option just install the dbrparser but maybe you can use the job.sh
+from the repository to schedule the process in your cronjob
+
+```
+$ pip install git+https://github.com/awslabs/aws-detailed-billing-parser.git
+```
+
+* This option clone the repository from git to your instance and install
+
 ```bash
 $ git clone https://github.com/awslabs/aws-detailed-billing-parser.git
 $ cd aws-detailed-billing-parser
@@ -42,7 +52,7 @@ and style of the code. There are nice stubs for testing the CLI command line.
 All you have to do is install **tox** and issue `tox` in the command line.
 
 
-## TODO
+## TODO (Features to incorporate in the dbrparser)
 
 * Unzip (Extract the DBR from zip file);
 * S3 (Copy the source file from S3 bucket to local folder to process);
@@ -71,6 +81,16 @@ Now you have:
         - Reserved Instance
         - Spot Instance
     * InstanceType with only the instance name extracted from the UsageType
+
+* Added the function Business Analytics that run on a separately thread and
+process the dbr file to include extra information like:
+    * Elasticity (How much instances you grown/shrink during the period)
+    * % RI Utilization
+    * % Spot Utilization
+    * Instance Type (ex. t2.micro, c3.large, m4.xlarge, etc.)
+    * Hours per USD spent. (You can see the average computation hours per dolar spent)
+        - This can be higher when you run smaller instances, but the idea is to show trend lines
+        if you are having strange behaviors in your environment
     
 * Added the option of Analytics processing only. -bm 3 or --processing-mode 3
 
@@ -78,6 +98,9 @@ Now you have:
 
 * Reduced the Bulk size from 10000 to 1000 due to changes in the Elasticsearch Service and to improve the reability of the transmission
 This could lead to a little more time to process but will reduce the chance of buffer errors
+
+* Tested with AWS Elasticsearch 2.3!
+
 
 ### Version 0.4.2 - 2016-08-31
 
