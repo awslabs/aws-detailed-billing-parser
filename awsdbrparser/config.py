@@ -64,7 +64,7 @@ ES_DOCTYPE = {
         "BlendedRate": {"type": "float"},
         "UnBlendedCost": {"type": "float"},
         "UnBlendedRate": {"type": "float"}
-    },"dynamic_templates": [
+    }, "dynamic_templates": [
         {
             "notanalyzed": {
                 "match": "*",
@@ -212,5 +212,4 @@ class Config(object):
 
     def _sugest_filename(self, extension):
         return '{}-aws-billing-detailed-line-items-with-' \
-               'resources-and-tags-{:04d}-{:02d}{}'.format(
-            self.account_id, self.es_year, self.es_month, extension)
+               'resources-and-tags-{:04d}-{:02d}{}'.format(self.account_id, self.es_year, self.es_month, extension)

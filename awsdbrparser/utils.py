@@ -17,7 +17,6 @@
 # limitations under the License.
 #
 import contextlib
-import json
 
 import click
 

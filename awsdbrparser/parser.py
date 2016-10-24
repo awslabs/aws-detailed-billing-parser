@@ -78,8 +78,9 @@ def analytics(config, echo):
 
     # Lets work with the Analytics list
     # First we generate a new list with only EC2 instances to improve speed
-    temp_items = list(line for line in analytics_list if line.get('ProductName') == 'Amazon Elastic Compute Cloud'
-                      and 'RunInstances' in line.get('Operation') and line.get('UsageItem'))
+    temp_items = list(line for line in analytics_list if
+                      line.get('ProductName') == 'Amazon Elastic Compute Cloud' and 'RunInstances' in line.get(
+                          'Operation') and line.get('UsageItem'))
     # Lets generate the date list for days where we have EC2 executed
     date_set = set(line.get('UsageStartDate') for line in temp_items)
     # This list has only YMD instead of YMD + hour
@@ -122,6 +123,8 @@ def analytics(config, echo):
                             body={'UsageStartDate': ec2_list[0].get('UsageStartDate'),
                                   'EPU_Cost': result_cost,
                                   'EPU_UnBlended': result_unblended})
+        if not response.get('created'):
+            echo('[!] Unable to send document to ES!')
 
         instances_list.append((line,
                                line.split(' ')[0],
@@ -155,6 +158,9 @@ def analytics(config, echo):
                                   'Elasticity': elasticity,
                                   'ReservedCoverage': ri_coverage,
                                   'SpotCoverage': spot_coverage})
+
+        if not response.get('created'):
+            echo('[!] Unable to send document to ES!')
 
     file_in.close()
     # Finished Processing
@@ -195,8 +201,8 @@ def parse(config, verbose=False):
                 awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, 'es',
                                    session_token=credentials.token)
 
-        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
-                           connection_class=RequestsHttpConnection)
+        es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout,
+                           http_auth=awsauth, connection_class=RequestsHttpConnection)
         if config.delete_index:
             echo('Deleting current index: {}'.format(index_name))
             es.indices.delete(index_name, ignore=404)

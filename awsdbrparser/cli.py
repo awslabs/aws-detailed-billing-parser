@@ -16,21 +16,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-
-import click
 import datetime
+import os
 import sys
 import time
 
+import click
+
 from . import parser
+from .config import BULK_SIZE
 from .config import Config
+from .config import ES_TIMEOUT
 from .config import OUTPUT_OPTIONS
 from .config import OUTPUT_TO_FILE
 from .config import PROCESS_BY_LINE
 from .config import PROCESS_OPTIONS
-from .config import BULK_SIZE
-from .config import ES_TIMEOUT
 from .utils import ClickEchoWrapper
 from .utils import display_banner
 from .utils import hints_for
@@ -44,9 +44,10 @@ configure = click.make_pass_decorator(Config, ensure=True)
 @click.option('-o', '--output', metavar='FILE', help='Output file (will generate a JSON file).')
 @click.option('-e', '--es-host', metavar='HOST', help='Elasticsearch host name or IP address.')
 @click.option('-p', '--es-port', type=int, metavar='PORT', help='Elasticsearch port number.')
-@click.option('-to', '--es-timeout', type=int, default=ES_TIMEOUT, metavar='TIMEOUT', help='Elasticsearch connection Timeout.')
+@click.option('-to', '--es-timeout', type=int, default=ES_TIMEOUT, metavar='TIMEOUT',
+              help='Elasticsearch connection Timeout.')
 @click.option('-ei', '--es-index', metavar='INDEX', help='Elasticsearch index prefix.')
-@click.option('-bi','--analytics', is_flag=True, default=False,
+@click.option('-bi', '--analytics', is_flag=True, default=False,
               help='Execute analytics on file to generate extra-information')
 @click.option('-a', '--account-id', help='AWS Account-ID.')
 @click.option('-y', '--year', type=int, help='Year for the index (defaults to current year).')
@@ -103,4 +104,3 @@ def main(config, *args, **kwargs):
 
     elapsed_time = time.time() - start
     echo('Elapsed time: {}'.format(datetime.timedelta(seconds=elapsed_time)))
-
