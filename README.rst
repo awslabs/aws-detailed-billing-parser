@@ -89,6 +89,64 @@ Version 0.5.0 - 2016-10-11
    -  InstanceType with only the instance name extracted from the
       UsageType
 
+Version 0.4.1 - 2016-08-31
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  Changed requirements to support newer versions of boto3. (Due to some
+   other softwares that need version 1.3.1 or higher, dbrparser is
+   conflicting with other softwares)
+
+Version 0.4.1 - 2016-05-11
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  Bugfix of timeout when sending by bulk (Increased to 30 seconds)
+
+Version 0.4.0 - 2016-03-27
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  Project was completely restructured in order to create a proper
+   Python package called ``awsdbrparser`` and the CLI name
+   ``dbrparser``;
+-  In the CLI side, ``argparse`` was dropped in favor of Armin
+   Ronacher’s ``click``, allowing a better and easier CLI
+   implementation;
+-  Introduced option ‘–quiet’ for those who intent to schedule DBR
+   parsing via cron jobs, for example;
+-  Introduced option ‘–fail-fast’ which will stop parsing execution in
+   case of an expected parse error or other component error;
+-  Dropped own implementation of progress bar in favor of click’s
+   progress bar, which includes a nice ETA (estimated time for
+   acomplishment) calculation;
+-  When used as a library, parser execution can be parametrized through
+   ``awsdbrparser.config.Config`` class instance.
+-  Entire code was reviewed to match PEP8 compliance (with fewer
+   exceptions) through ``flake8``.
+
+Version 0.3 - 2016-02-12
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  Added incremental updates with ``--check`` parameter (Now you can
+   update the same file to the index without need to delete the index
+   and reprocess the entirely file again);
+-  Compatible with Elasticsearch 2.1 and above (Removed the
+   ``_timestamp`` from mapping that has been deprecated from 2.0 and
+   above);
+-  Included elapsed time to evaluate the time to process the file.
+
+Version 0.2 - 2015-10-26
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  Filter of control messages (Stop the error in the end of processing);
+-  Verbose output of the processing;
+-  Progress bar;
+-  Output options (to file or directly to Elasticsearch);
+-  Elasticsearch mapping.
+
+version 0.1 - 2015-10-17
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  Initial version.
+
 .. _AWS boto3: https://aws.amazon.com/pt/sdk-for-python/
 .. _Elasticsearch: https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/
 .. _click: http://click.pocoo.org/
