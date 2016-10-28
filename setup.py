@@ -41,13 +41,13 @@ def read(*filenames, **kwargs):
 
 def read_version():
     content = read(os.path.join(
-            os.path.dirname(__file__), 'awsdbrparser', '__init__.py'))
+        os.path.dirname(__file__), 'awsdbrparser', '__init__.py'))
     return re.search(r"__version__ = '([^']+)'", content).group(1)
 
 
 def read_requirements():
     content = read(os.path.join('requirements', 'base.txt'))
-    return [line for line in content.split(os.linesep) \
+    return [line for line in content.split(os.linesep)
             if not line.strip().startswith('#')]
 
 
@@ -59,7 +59,7 @@ setup(
     author='Rafael M. Koike',
     author_email='koiker@amazon.com',
     description='Parse DBR and send to Elasticsearch or dumps to JSON',
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     zip_safe=False,

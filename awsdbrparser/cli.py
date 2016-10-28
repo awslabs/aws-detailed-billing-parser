@@ -18,13 +18,15 @@
 #
 import datetime
 import os
-import time
 import sys
+import time
 
 import click
 
 from . import parser
+from .config import BULK_SIZE
 from .config import Config
+from .config import ES_TIMEOUT
 from .config import OUTPUT_OPTIONS
 from .config import OUTPUT_TO_FILE
 from .config import PROCESS_BY_LINE
@@ -34,7 +36,6 @@ from .utils import display_banner
 from .utils import hints_for
 from .utils import values_of
 
-
 configure = click.make_pass_decorator(Config, ensure=True)
 
 
@@ -43,28 +44,33 @@ configure = click.make_pass_decorator(Config, ensure=True)
 @click.option('-o', '--output', metavar='FILE', help='Output file (will generate a JSON file).')
 @click.option('-e', '--es-host', metavar='HOST', help='Elasticsearch host name or IP address.')
 @click.option('-p', '--es-port', type=int, metavar='PORT', help='Elasticsearch port number.')
-@click.option('-to', '--es-timeout',type=int, metavar='TIMEOUT', help='Elasticsearch index prefix.')
+@click.option('-to', '--es-timeout', type=int, default=ES_TIMEOUT, metavar='TIMEOUT',
+              help='Elasticsearch connection Timeout.')
 @click.option('-ei', '--es-index', metavar='INDEX', help='Elasticsearch index prefix.')
+@click.option('-bi', '--analytics', is_flag=True, default=False,
+              help='Execute analytics on file to generate extra-information')
 @click.option('-a', '--account-id', help='AWS Account-ID.')
 @click.option('-y', '--year', type=int, help='Year for the index (defaults to current year).')
 @click.option('-m', '--month', type=int, help='Month for the index (defaults to current month).')
 @click.option('-t', '--output-type', default=OUTPUT_TO_FILE,
-        type=click.Choice(values_of(OUTPUT_OPTIONS)),
-        help='Output type ({}, default is {}).'.format(hints_for(OUTPUT_OPTIONS), OUTPUT_TO_FILE))
+              type=click.Choice(values_of(OUTPUT_OPTIONS)),
+              help='Output type ({}, default is {}).'.format(hints_for(OUTPUT_OPTIONS), OUTPUT_TO_FILE))
 @click.option('-d', '--csv-delimiter', help='CSV delimiter (default is comma).')
 @click.option('--delete-index', is_flag=True, default=False,
-        help='Delete current index before processing (default is keep).')
-@click.option('-bm', '--bulk-mode', default=PROCESS_BY_LINE,
-        type=click.Choice(values_of(PROCESS_OPTIONS)),
-        help='Send DBR line-by-line or in bulk ({}, bulk mode implies sending '
-             'data to an Elasticsearch instance).'.format(hints_for(PROCESS_OPTIONS)))
-@click.option('-bs', '--bulk-size', default=10000, metavar='BULK_SIZE',
-        help='Define the size of bulk to send to (see --bulk-mode option).')
+              help='Delete current index before processing (default is keep).')
+@click.option('-bm', '--process-mode', default=PROCESS_BY_LINE,
+              type=click.Choice(values_of(PROCESS_OPTIONS)),
+              help='Send DBR line-by-line or in bulk ({}, bulk mode implies sending '
+                   'data to an Elasticsearch instance).'.format(hints_for(PROCESS_OPTIONS)))
+@click.option('-bs', '--bulk-size', default=BULK_SIZE, metavar='BS',
+              help='Define the size of bulk to send to (see --bulk-mode option).')
 @click.option('-u', '--update', is_flag=True, default=False,
-        help='Update existing documents in Elasticseaerch index before add (should be used with --check flag).')
+              help='Update existing documents in Elasticseaerch index before add (should be used with --check flag).')
 @click.option('-c', '--check', is_flag=True, default=False,
-        help='Check if current record exists in Elasticseaerch before add '
-             'new (this option will be ignored in bulk processing).')
+              help='Check if current record exists in Elasticseaerch before add '
+                   'new (this option will be ignored in bulk processing).')
+@click.option('--awsauth', is_flag=True, default=False,
+              help='Access the Elasticsearch with AWS Signed V4 Requests')
 @click.option('-v', '--version', is_flag=True, default=False, help='Display version number and exit.')
 @click.option('-q', '--quiet', is_flag=True, default=False, help='Runs as silently as possible.')
 @click.option('--fail-fast', is_flag=True, default=False, help='Stop parsing on first index error.')

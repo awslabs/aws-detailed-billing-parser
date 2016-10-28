@@ -19,7 +19,6 @@
 
 from datetime import datetime
 
-
 OUTPUT_TO_FILE = '1'
 OUTPUT_TO_ELASTICSEARCH = '2'
 
@@ -27,14 +26,17 @@ OUTPUT_OPTIONS = (
     (OUTPUT_TO_FILE, 'Output to File'),
     (OUTPUT_TO_ELASTICSEARCH, 'Output to Elasticsearch'),)
 
-
 PROCESS_BY_LINE = '1'
 PROCESS_BY_BULK = '2'
+PROCESS_BI_ONLY = '3'
 
 PROCESS_OPTIONS = (
     (PROCESS_BY_LINE, 'Process by Line'),
-    (PROCESS_BY_BULK, 'Process in Bulk'),)
+    (PROCESS_BY_BULK, 'Process in Bulk'),
+    (PROCESS_BI_ONLY, 'Process BI Only'))
 
+BULK_SIZE = 1000
+ES_TIMEOUT = 30
 
 ES_DOCTYPE = {
     "properties": {
@@ -62,7 +64,18 @@ ES_DOCTYPE = {
         "BlendedRate": {"type": "float"},
         "UnBlendedCost": {"type": "float"},
         "UnBlendedRate": {"type": "float"}
-    }
+    }, "dynamic_templates": [
+        {
+            "notanalyzed": {
+                "match": "*",
+                "match_mapping_type": "string",
+                "mapping": {
+                    "type": "string",
+                    "index": "not_analyzed"
+                }
+            }
+        }
+    ]
 }
 """
 DBR document properties for actual document type.
@@ -71,7 +84,6 @@ See :attr:`Config.es_doctype` and :attr:`Config.mapping` for details.
 
 
 class Config(object):
-
     def __init__(self):
         today = datetime.today()
 
@@ -83,14 +95,15 @@ class Config(object):
         self.es_year = today.year
         self.es_month = today.month
         self.es_timestamp = 'UsageStartDate'  # fieldname that will be replaced by Timestamp
-        self.es_timeout = 30 
+        self.es_timeout = ES_TIMEOUT
 
         # aws account id
         self.account_id = '01234567890'
 
         # encoding (this is the default encoding for most files, but if
         # customer uses latin/spanish characters you may to change
-        self.encoding = 'iso-8859-1'
+        # self.encoding = 'iso-8859-1'
+        self.encoding = 'utf-8'
 
         # update flag (if True update existing documents in Elasticsearch index;
         # defaults to False for performance reasons)
@@ -99,6 +112,18 @@ class Config(object):
         # check flag (check if current record exists before add new -- for
         # incremental updates)
         self.check = False
+
+        # Use AWS Signed requests to access the Elasticsearch
+        self.awsauth = False
+
+        # Run Business Inteligence on the lineitems
+        self.analytics = False
+
+        # Time to wait for the analytics process. Default is 30 minutes
+        self.analytics_timeout = 30
+
+        # Run Business Inteligence Only
+        self.bi_only = False
 
         # delete index flag indicates whether or not the current elasticsearch
         # should be kept or deleted
@@ -118,13 +143,13 @@ class Config(object):
         self.csv_delimiter = ','
         self._output_type = OUTPUT_TO_FILE
         self._bulk_mode = PROCESS_BY_LINE
-        self.bulk_size = 10000
+        self.bulk_size = BULK_SIZE
         self.bulk_msg = {
-                "RecordType": [
-                        "StatementTotal",
-                        "InvoiceTotal",
-                        "Rounding",
-                        "AccountTotal"]}
+            "RecordType": [
+                "StatementTotal",
+                "InvoiceTotal",
+                "Rounding",
+                "AccountTotal"]}
 
     @property
     def mapping(self):
@@ -149,11 +174,11 @@ class Config(object):
         return self.output_type == OUTPUT_TO_ELASTICSEARCH
 
     @property
-    def bulk_mode(self):
+    def process_mode(self):
         return self._bulk_mode
 
-    @bulk_mode.setter
-    def bulk_mode(self, value):
+    @process_mode.setter
+    def process_mode(self, value):
         if value not in (v for v, s in PROCESS_OPTIONS):
             raise ValueError('Invalid bulk mode value: {!r}'.format(value))
         self._bulk_mode = value
@@ -183,9 +208,8 @@ class Config(object):
                 setattr(self, attr, value)
             else:
                 raise AttributeError('{!r} object has no attribute {!r}'.format(
-                        self.__class__.__name__, attr))
+                    self.__class__.__name__, attr))
 
     def _sugest_filename(self, extension):
-        return '{}-aws-billing-detailed-line-items-with-'\
-                'resources-and-tags-{:04d}-{:02d}{}'.format(
-                        self.account_id, self.es_year, self.es_month, extension)
+        return '{}-aws-billing-detailed-line-items-with-' \
+               'resources-and-tags-{:04d}-{:02d}{}'.format(self.account_id, self.es_year, self.es_month, extension)
