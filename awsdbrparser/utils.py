@@ -55,16 +55,18 @@ def pre_process(json_dict):
         # Some lineitems contain strings like: "RunInstances:002".
         if temp_json.get('ReservedInstance', '') == 'Y':
             temp_json['UsageItem'] = 'Reserved Instance'
-            temp_json['InstanceType'] = temp_json['UsageType'].split(':')[1]
 
         elif 'BoxUsage' in temp_json.get('UsageType', ' '):
             # If this LineItem is a EC2 instance running we include 'EC2-Running'
             temp_json['UsageItem'] = 'On-Demand'
-            temp_json['InstanceType'] = temp_json['UsageType'].split(':')[1]
 
         elif 'SpotUsage' in temp_json.get('UsageType', ' '):
             temp_json['UsageItem'] = 'Spot Instance'
-            temp_json['InstanceType'] = temp_json['UsageType'].split(':')[1]
+
+        if ':' in temp_json.get('UsageType'):
+            temp_json['InstanceType'] = temp_json.get('UsageType').split(':')[1]
+        else:
+            temp_json['InstanceType'] = 'N/A'
 
     return temp_json
 
@@ -75,8 +77,8 @@ def bulk_data(json_string, bulk):
     format: ``{key : [strings]}``.
     If the key/value is found return True else False
 
-    :param str json_string:
-    :param bool bulk:
+    :param dict json_string:
+    :param dict bulk:
     :returns: True if found a control message and False if not.
     :rtype: bool
     """

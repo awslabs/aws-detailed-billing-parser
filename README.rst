@@ -69,6 +69,13 @@ TODO (Features to incorporate in the dbrparser)
 Changes
 -------
 
+Version 0.5.1 - 2017-01-05
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  BugFix: Some running instances don't have the UsageType in the format: <Usage>:<InstanceType>
+Than we need to check if the UsageType has ':' and return InstanceType or N/A
+
+
 Version 0.5.0 - 2016-10-11
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
