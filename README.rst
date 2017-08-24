@@ -68,6 +68,12 @@ TODO (Features to incorporate in the dbrparser)
 
 Changes
 -------
+Version 0.5.2 - 2017-08-24
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  BugFix: Python 3 has deprecated the parameter encoding in the json library and some functions
+still have them. Removed the encoding paramter solved the incompatibility
+
 
 Version 0.5.1 - 2017-01-05
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

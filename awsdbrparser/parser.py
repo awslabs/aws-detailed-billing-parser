@@ -295,11 +295,11 @@ def parse(config, verbose=False):
                     if config.debug:
                         print(json.dumps(  # do not use 'echo()' here
                             utils.pre_process(json_row),
-                            ensure_ascii=False, encoding=config.encoding))
+                            ensure_ascii=False))
 
                     if config.output_to_file:
                         file_out.write(
-                            json.dumps(utils.pre_process(json_row), ensure_ascii=False, encoding=config.encoding))
+                            json.dumps(utils.pre_process(json_row), ensure_ascii=False))
                         file_out.write('\n')
                         added += 1
 
@@ -377,14 +377,14 @@ def parse(config, verbose=False):
 def is_control_message(record, config):
     # <record> record dict
     # <config> an instance of `awsdbrparser.config.Config`
-    # data = json.dumps(record, ensure_ascii=False, encoding=config.encoding)
+    # data = json.dumps(record, ensure_ascii=False)
     return utils.bulk_data(record, config.bulk_msg)
 
 
 def body_dump(record, config):
     # <record> record dict
     # <config> an instance of `awsdbrparser.config.Config`
-    body = json.dumps(utils.pre_process(record), ensure_ascii=False, encoding=config.encoding)
+    body = json.dumps(utils.pre_process(record), ensure_ascii=False)
     return body
 
 
