@@ -7,13 +7,13 @@ function usage
     echo "-pm | --previous-month = process the previous month from current date"
 }
 
-BUCKET='s3://billing-koiker'
-ACCOUNT='109881088269'
+BUCKET='s3://bucket-123456'
+ACCOUNT='123456789012'
 YEAR=$(date +%Y)
 MONTH=$(date +%m)
-LOCAL_FOLDER='/Users/koiker/Documents/Python/Devel/dbrparser-py3/aws-detailed-billing-parser'
+LOCAL_FOLDER='/mnt/jobs'
 
-ES_HOST='search-fibonacci-zzdru7jvfvdd676sgsobw6yc2q.us-east-1.es.amazonaws.com'
+ES_HOST='elastic-search-host.endopoint.name'
 ES_PORT=80
 
 # Process input parameters
@@ -43,7 +43,7 @@ aws s3 cp $BUCKET/$ZIP_FILE .
 unzip -o  $ZIP_FILE
 
 # Process the file with dbrparser
-dbrparser -i $DBR_FILE -e $ES_HOST -p $ES_PORT -t 2 -bm 2 -y $YEAR -m $MONTH --delete-index -bi --awsauth
+dbrparser -i $DBR_FILE -e $ES_HOST -p $ES_PORT -t 2 -bm 2 -y $YEAR -m $MONTH --delete-index -bi
 
 # Remove processed file
 rm $DBR_FILE
