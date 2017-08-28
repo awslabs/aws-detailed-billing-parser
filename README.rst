@@ -68,6 +68,11 @@ TODO (Features to incorporate in the dbrparser)
 
 Changes
 -------
+Version 0.5.3 - 2017-08-28
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Refactoring: analytics() function has been refactored to reduce the memory usage and avoid problems with huge DBR files
+
 Version 0.5.2 - 2017-08-24
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

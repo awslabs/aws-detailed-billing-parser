@@ -44,7 +44,7 @@ class ParserError(Exception):
 
 def analytics(config, echo):
     """
-    This function generate extra information in elasticsearch analyzing the lineitems of the file
+    This function generate extra information in elasticsearch analyzing the line items of the file
     :param echo:
     :param config:
     :return:
@@ -68,93 +68,69 @@ def analytics(config, echo):
     es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
                        connection_class=RequestsHttpConnection)
     csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
-    analytics_list = list()
+    analytics_daytime = dict()
+    analytics_day_only = dict()
     for recno, json_row in enumerate(csv_file):
+        # Pre-Process the row to append extra information
+        json_row = utils.pre_process(json_row)
         if is_control_message(json_row, config):
+            # Skip this line
             continue
+        elif json_row.get('ProductName') == 'Amazon Elastic Compute Cloud' and 'RunInstances' in json_row.get(
+                'Operation') and json_row.get('UsageItem'):
+            # Get the day time ('2016-03-01 01:00:00')
+            daytime = json_row.get('UsageStartDate')
+            # the day only '2016-03-01'
+            day = json_row.get('UsageStartDate').split(' ')[0]
+            # Add the day time to the dict
+            analytics_daytime.setdefault(daytime, {"Count": 0, "Cost": 0.00, "RI": 0, "Spot": 0, "Unblended": 0.00})
+            # Increment the count of total instances
+            analytics_daytime[daytime]["Count"] += 1
+            analytics_daytime[daytime]["Unblended"] += float(json_row.get('UnBlendedCost', 0.00))
+            analytics_daytime[daytime]["Cost"] += float(json_row.get('Cost', 0.00))
 
-        else:
-            analytics_list.append(utils.pre_process(json_row))
+            # Add the day only to the dict
+            analytics_day_only.setdefault(day, {"Count": 0, "RI": 0, "Spot": 0, "Min": None, "Max": None})
+            analytics_day_only[day]["Count"] += 1
+            # Increment the count of RI or Spot if the instance is one or other
+            if json_row.get('UsageItem') == 'Reserved Instance':
+                analytics_day_only[day]["RI"] += 1
+                analytics_daytime[daytime]["RI"] += 1
+            elif json_row.get('UsageItem') == 'Spot Instance':
+                analytics_day_only[day]["Spot"] += 1
+                analytics_daytime[daytime]["Spot"] += 1
 
-    # Lets work with the Analytics list
-    # First we generate a new list with only EC2 instances to improve speed
-    temp_items = list(line for line in analytics_list if
-                      line.get('ProductName') == 'Amazon Elastic Compute Cloud' and 'RunInstances' in line.get(
-                          'Operation') and line.get('UsageItem'))
-    # Lets generate the date list for days where we have EC2 executed
-    date_set = set(line.get('UsageStartDate') for line in temp_items)
-    # This list has only YMD instead of YMD + hour
-    day_set = set(item.split(' ')[0] for item in date_set)
-    instances_list = list()
-    # EC2 Instances per USD
-    # Iterate over the time range and count the number of instances per hour
-    for line in date_set:
-        ec2_count = 0
-        ec2_count_ri_only = 0
-        ec2_count_spot_only = 0
-        ec2_list = list()
-        for item in temp_items:
-            if item.get('UsageStartDate') == line:
-                ec2_list.append(item)
-                ec2_count += 1
-                if item.get('UsageItem') == 'Reserved Instance':
-                    # Filter ec2_count to remove RI
-                    ec2_count_ri_only += 1
-
-                if item.get('UsageItem') == 'Spot Instance':
-                    # Count Spot Only
-                    ec2_count_spot_only += 1
-
-        result_unblended = 0.0
-        result_cost = 0.0
-
-        avg_unblended = sum(float(line.get('UnBlendedCost', 0)) for line in ec2_list) / ec2_count
-        avg_cost = sum(float(line.get('Cost', 0)) for line in ec2_list) / ec2_count
-
-        # Some DBR files has Cost (Single Account) and some has (Un)BlendedCost (Consolidated Account)
-        # In this case we try to process both, but one will be zero and we need to check
-        if avg_unblended:
-            result_unblended = 1.0 / avg_unblended
-
-        if avg_cost:
-            result_cost = 1.0 / avg_cost
+    # Some DBR files has Cost (Single Account) and some has (Un)BlendedCost (Consolidated Account)
+    # In this case we try to process both, but one will be zero and we need to check
+    # TODO: use a single variable and an flag to output Cost or Unblended
+    for k, v in analytics_daytime.items():
+        result_cost = 1.0 / (v.get('Cost') / v.get('Count')) if v.get('Cost') else 0.00
+        result_unblended = 1.0 / (v.get('Unblended') / v.get('Count')) if v.get('Unblended') else 0.0
 
         response = es.index(index=index_name, doc_type='ec2_per_usd',
-                            body={'UsageStartDate': ec2_list[0].get('UsageStartDate'),
+                            body={'UsageStartDate': k,
                                   'EPU_Cost': result_cost,
                                   'EPU_UnBlended': result_unblended})
         if not response.get('created'):
             echo('[!] Unable to send document to ES!')
 
-        instances_list.append((line,
-                               line.split(' ')[0],
-                               ec2_count,
-                               ec2_count_ri_only,
-                               ec2_count_spot_only,)
-                              )
     # Elasticity
     #
     # The calculation is 1 - min / max EC2 instances per day
     # The number of EC2 instances has been calculated previously
-    # and appended in the ec2_list
     #
-    for line in day_set:
-        ec2_min = min(item[2] - item[3] for item in instances_list if item[1] == line)
-        ec2_max = max(item[2] - item[3] for item in instances_list if item[1] == line)
+    for k, v in analytics_day_only.items():
+        ec2_min = min(value["Count"] - value["RI"] for key, value in analytics_daytime.items() if k in key)
+        ec2_max = max(value["Count"] - value["RI"] for key, value in analytics_daytime.items() if k in key)
         if ec2_max:
             elasticity = 1.0 - float(ec2_min) / float(ec2_max)
         else:
             elasticity = 1.0
 
-        ri_coverage = sum(float(item[3]) / float(item[2]) for item in instances_list if item[1] == line)
-        ri_count = sum(1 for item in instances_list if item[1] == line)
-        ri_coverage /= ri_count
-        spot_coverage = sum(float(item[4]) / float(item[2]) for item in instances_list if item[1] == line)
-        spot_count = sum(1 for item in instances_list if item[1] == line)
-        spot_coverage /= spot_count
-
+        ri_coverage = analytics_day_only[k]["RI"] / analytics_day_only[k]["Count"]
+        spot_coverage = analytics_day_only[k]["Spot"] / analytics_day_only[k]["Count"]
         response = es.index(index=index_name, doc_type='elasticity',
-                            body={'UsageStartDate': line + ' 12:00:00',
+                            body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,
                                   'ReservedCoverage': ri_coverage,
                                   'SpotCoverage': spot_coverage})
@@ -220,8 +196,13 @@ def parse(config, verbose=False):
 
         if config.process_mode == PROCESS_BY_BULK:
             echo('Processing in BULK MODE, size: {}'.format(config.bulk_size))
-        else:
+        elif config.process_mode == PROCESS_BY_LINE:
             echo('Processing in LINE MODE')
+        elif config.process_mode == PROCESS_BI_ONLY:
+            if config.analytics:
+                echo('Processing BI Only')
+            else:
+                echo("You don't have set the parameter -bi. Nothing to do.")
     else:
         # uses a 100% bug-free progressbar, guaranteed :-)
         progressbar = utils.null_progressbar
