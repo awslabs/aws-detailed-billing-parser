@@ -127,8 +127,8 @@ def analytics(config, echo):
         else:
             elasticity = 1.0
 
-        ri_coverage = analytics_day_only[k]["RI"] / analytics_day_only[k]["Count"]
-        spot_coverage = analytics_day_only[k]["Spot"] / analytics_day_only[k]["Count"]
+        ri_coverage = float(analytics_day_only[k]["RI"]) / float(analytics_day_only[k]["Count"])
+        spot_coverage = float(analytics_day_only[k]["Spot"]) / float(analytics_day_only[k]["Count"])
         response = es.index(index=index_name, doc_type='elasticity',
                             body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,

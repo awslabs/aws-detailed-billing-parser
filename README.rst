@@ -68,6 +68,11 @@ TODO (Features to incorporate in the dbrparser)
 
 Changes
 -------
+Version 0.5.4 - 2017-08-29
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Bugfix: RI and Spot coverage was returning incorrect results with Python 2.7 due to the default integer result from /
+
 Version 0.5.3 - 2017-08-28
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
