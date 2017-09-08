@@ -1,3 +1,7 @@
+.. image:: https://travis-ci.org/awslabs/aws-detailed-billing-parser.svg?branch=master
+    :target: https://travis-ci.org/awslabs/aws-detailed-billing-parser
+
+
 AWS DBR parser
 ==============
 
