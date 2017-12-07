@@ -14,7 +14,7 @@ Records (DBR) to JSON format and send these documents directly to
 ElasticSearch or save it in a JSON file. It’s based on `AWS boto3`_,
 `Elasticsearch`_ Python API and `click`_ CLI creation kit.
 
-Instalation Instructions
+Installation Instructions
 ------------------------
 
 This project isn’t on PyPI yet. For installation you will need to clone
