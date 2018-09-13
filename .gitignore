@@ -8,3 +8,6 @@ build/
 .cache/
 .tox/
 .coverage
+
+.idea/
+*.iml

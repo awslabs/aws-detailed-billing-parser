@@ -132,7 +132,7 @@ def analytics(config, echo):
         response = es.index(index=index_name, doc_type='elasticity',
                             body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,
-                                  'ReservedCoverage': ri_coverage,
+                                  'ReservedInstanceCoverage': ri_coverage,
                                   'SpotCoverage': spot_coverage})
 
         if not response.get('created'):
