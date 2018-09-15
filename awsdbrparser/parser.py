@@ -107,7 +107,7 @@ def analytics(config, echo):
         result_cost = 1.0 / (v.get('Cost') / v.get('Count')) if v.get('Cost') else 0.00
         result_unblended = 1.0 / (v.get('Unblended') / v.get('Count')) if v.get('Unblended') else 0.0
 
-        response = es.index(index=index_name, doc_type='ec2_per_usd',
+        response = es.index(index='ec2_per_usd', doc_type='ec2_per_usd',
                             body={'UsageStartDate': k,
                                   'EPU_Cost': result_cost,
                                   'EPU_UnBlended': result_unblended})
@@ -129,7 +129,7 @@ def analytics(config, echo):
 
         ri_coverage = float(analytics_day_only[k]["RI"]) / float(analytics_day_only[k]["Count"])
         spot_coverage = float(analytics_day_only[k]["Spot"]) / float(analytics_day_only[k]["Count"])
-        response = es.index(index=index_name, doc_type='elasticity',
+        response = es.index(index='elasticity', doc_type='elasticity',
                             body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,
                                   'ReservedInstanceCoverage': ri_coverage,
@@ -183,7 +183,7 @@ def parse(config, verbose=False):
             echo('Deleting current index: {}'.format(index_name))
             es.indices.delete(index_name, ignore=404)
         es.indices.create(index_name, ignore=400)
-        es.indices.put_mapping(index=index_name, doc_type=config.es_doctype, body=config.mapping)
+        es.indices.put_mapping(index=config.es_doctype, doc_type=config.es_doctype, body=config.mapping)
 
     if verbose:
         progressbar = click.progressbar
@@ -235,7 +235,7 @@ def parse(config, verbose=False):
                         pbar.update(1)
 
             for recno, (success, result) in enumerate(helpers.streaming_bulk(es, documents(),
-                                                                             index=index_name,
+                                                                             index=config.es_doctype,
                                                                              doc_type=config.es_doctype,
                                                                              chunk_size=config.bulk_size)):
                 # <recno> integer, the record number (0-based)
@@ -289,7 +289,7 @@ def parse(config, verbose=False):
                             # FIXME: the way it was, `search_exists` will not suffice, since we'll need the document _id for the update operation; # noqa
                             # FIXME: use `es.search` with the following sample body: `{'query': {'match': {'RecordId': '43347302922535274380046564'}}}`; # noqa
                             # SEE: https://elasticsearch-py.readthedocs.org/en/master/api.html#elasticsearch.Elasticsearch.search; # noqa
-                            response = es.search_exists(index=index_name, doc_type=config.es_doctype,
+                            response = es.search_exists(index=config.es_doctype, doc_type=config.es_doctype,
                                                         q='RecordId:{}'.format(json_row['RecordId']))
                             if response:
                                 if config.update:
@@ -300,7 +300,7 @@ def parse(config, verbose=False):
                                 else:
                                     skipped += 1
                             else:
-                                response = es.index(index=index_name, doc_type=config.es_doctype,
+                                response = es.index(index=config.es_doctype, doc_type=config.es_doctype,
                                                     body=body_dump(json_row, config))
                                 if not es_index_successful(response):
                                     message = 'Failed to index record {:d} with result {!r}'.format(recno, response)
@@ -311,7 +311,7 @@ def parse(config, verbose=False):
                                 else:
                                     added += 1
                         else:
-                            response = es.index(index=index_name, doc_type=config.es_doctype,
+                            response = es.index(index=config.es_doctype, doc_type=config.es_doctype,
                                                 body=body_dump(json_row, config))
                             if not es_index_successful(response):
                                 message = 'Failed to index record {:d} with result {!r}'.format(recno, response)
