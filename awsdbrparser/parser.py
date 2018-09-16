@@ -68,6 +68,7 @@ def analytics(config, echo):
     es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
                        connection_class=RequestsHttpConnection)
     es.indices.create(index_name, ignore=400)
+    es.indices.create(config.es_doctype, ignore=400)
 
     csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
     analytics_daytime = dict()
