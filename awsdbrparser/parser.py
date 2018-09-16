@@ -67,6 +67,8 @@ def analytics(config, echo):
 
     es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
                        connection_class=RequestsHttpConnection)
+    es.indices.create(index_name, ignore=400)
+
     csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
     analytics_daytime = dict()
     analytics_day_only = dict()
@@ -107,6 +109,9 @@ def analytics(config, echo):
         result_cost = 1.0 / (v.get('Cost') / v.get('Count')) if v.get('Cost') else 0.00
         result_unblended = 1.0 / (v.get('Unblended') / v.get('Count')) if v.get('Unblended') else 0.0
 
+        if not es.indices.exists(index='ec2_per_usd'):
+            es.indices.create('ec2_per_usd', ignore=400)
+
         response = es.index(index='ec2_per_usd', doc_type='ec2_per_usd',
                             body={'UsageStartDate': k,
                                   'EPU_Cost': result_cost,
@@ -129,6 +134,9 @@ def analytics(config, echo):
 
         ri_coverage = float(analytics_day_only[k]["RI"]) / float(analytics_day_only[k]["Count"])
         spot_coverage = float(analytics_day_only[k]["Spot"]) / float(analytics_day_only[k]["Count"])
+
+        if not es.indices.exists(index='elasticity'):
+            es.indices.create('elasticity', ignore=400)        
         response = es.index(index='elasticity', doc_type='elasticity',
                             body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,
