@@ -192,6 +192,7 @@ def parse(config, verbose=False):
             echo('Deleting current index: {}'.format(index_name))
             es.indices.delete(index_name, ignore=404)
         es.indices.create(index_name, ignore=400)
+        es.indices.create(config.es_doctype, ignore=400)
         es.indices.put_mapping(index=config.es_doctype, doc_type=config.es_doctype, body=config.mapping)
 
     if verbose:
