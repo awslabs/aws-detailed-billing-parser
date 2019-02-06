@@ -38,27 +38,29 @@ PROCESS_OPTIONS = (
 BULK_SIZE = 1000
 ES_TIMEOUT = 30
 
+
+
 ES_DOCTYPE = {
     "properties": {
-        "LinkedAccountId": {"type": "string"},
-        "InvoiceID": {"type": "string", "index": "not_analyzed"},
-        "RecordType": {"type": "string"},
-        "RecordId": {"type": "string", "index": "not_analyzed"},
-        "UsageType": {"type": "string", "index": "not_analyzed"},
+        "LinkedAccountId": {"type": "keyword"},
+        "InvoiceID": {"type": "keyword"},
+        "RecordType": {"type": "keyword"},
+        "RecordId": {"type": "keyword"},
+        "UsageType": {"type": "keyword"},
         "UsageEndDate": {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"},
-        "ItemDescription": {"type": "string", "index": "not_analyzed"},
-        "ProductName": {"type": "string", "index": "not_analyzed"},
-        "RateId": {"type": "string"},
+        "ItemDescription": {"type": "keyword"},
+        "ProductName": {"type": "keyword"},
+        "RateId": {"type": "keyword"},
         "Rate": {"type": "float"},
-        "AvailabilityZone": {"type": "string", "index": "not_analyzed"},
-        "PricingPlanId": {"type": "string", "index": "not_analyzed"},
-        "ResourceId": {"type": "string", "index": "not_analyzed"},
+        "AvailabilityZone": {"type": "keyword"},
+        "PricingPlanId": {"type": "keyword"},
+        "ResourceId": {"type": "keyword"},
         "Cost": {"type": "float"},
-        "PayerAccountId": {"type": "string", "index": "not_analyzed"},
-        "SubscriptionId": {"type": "string", "index": "not_analyzed"},
+        "PayerAccountId": {"type": "keyword"},
+        "SubscriptionId": {"type": "keyword"},
         "UsageQuantity": {"type": "float"},
-        "Operation": {"type": "string"},
-        "ReservedInstance": {"type": "string", "index": "not_analyzed"},
+        "Operation": {"type": "keyword"},
+        "ReservedInstance": {"type": "keyword"},
         "UsageStartDate": {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"},
         "BlendedCost": {"type": "float"},
         "BlendedRate": {"type": "float"},
@@ -77,6 +79,7 @@ ES_DOCTYPE = {
         }
     ]
 }
+
 """
 DBR document properties for actual document type.
 See :attr:`Config.es_doctype` and :attr:`Config.mapping` for details.
