@@ -49,10 +49,6 @@ def analytics(config, echo):
     :param config:
     :return:
     """
-    index_name = '{}-{:d}-{:02d}'.format(
-        config.es_index,
-        config.es_year,
-        config.es_month)
 
     # Opening Input filename again to run in parallel
     file_in = open(config.input_filename, 'r')
@@ -67,7 +63,7 @@ def analytics(config, echo):
 
     es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout, http_auth=awsauth,
                        connection_class=RequestsHttpConnection)
-    es.indices.create(index_name, ignore=400)
+    es.indices.create(config.index_name, ignore=400)
     es.indices.create(config.es_doctype, ignore=400)
 
     csv_file = csv.DictReader(file_in, delimiter=config.csv_delimiter)
@@ -106,13 +102,19 @@ def analytics(config, echo):
     # Some DBR files has Cost (Single Account) and some has (Un)BlendedCost (Consolidated Account)
     # In this case we try to process both, but one will be zero and we need to check
     # TODO: use a single variable and an flag to output Cost or Unblended
+    if not es.indices.exists(index='ec2_per_usd'):
+        es.indices.create('ec2_per_usd', ignore=400, body={
+            "mappings": {
+                "ec2_per_usd": {
+                    "properties": {
+                        "UsageStartDate" : {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"}
+                    }
+                }
+            }
+        })
     for k, v in analytics_daytime.items():
         result_cost = 1.0 / (v.get('Cost') / v.get('Count')) if v.get('Cost') else 0.00
         result_unblended = 1.0 / (v.get('Unblended') / v.get('Count')) if v.get('Unblended') else 0.0
-
-        if not es.indices.exists(index='ec2_per_usd'):
-            es.indices.create('ec2_per_usd', ignore=400)
-
         response = es.index(index='ec2_per_usd', doc_type='ec2_per_usd',
                             body={'UsageStartDate': k,
                                   'EPU_Cost': result_cost,
@@ -125,6 +127,16 @@ def analytics(config, echo):
     # The calculation is 1 - min / max EC2 instances per day
     # The number of EC2 instances has been calculated previously
     #
+    if not es.indices.exists(index='elasticity'):
+        es.indices.create('elasticity', ignore=400, body={
+            "mappings": {
+                "elasticity": {
+                    "properties": {
+                        "UsageStartDate" : {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"}
+                    }
+                }
+            }
+        })
     for k, v in analytics_day_only.items():
         ec2_min = min(value["Count"] - value["RI"] for key, value in analytics_daytime.items() if k in key)
         ec2_max = max(value["Count"] - value["RI"] for key, value in analytics_daytime.items() if k in key)
@@ -136,8 +148,7 @@ def analytics(config, echo):
         ri_coverage = float(analytics_day_only[k]["RI"]) / float(analytics_day_only[k]["Count"])
         spot_coverage = float(analytics_day_only[k]["Spot"]) / float(analytics_day_only[k]["Count"])
 
-        if not es.indices.exists(index='elasticity'):
-            es.indices.create('elasticity', ignore=400)        
+
         response = es.index(index='elasticity', doc_type='elasticity',
                             body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,
@@ -163,10 +174,6 @@ def parse(config, verbose=False):
     """
     echo = utils.ClickEchoWrapper(quiet=(not verbose))
 
-    index_name = '{}-{:d}-{:02d}'.format(
-        config.es_index,
-        config.es_year,
-        config.es_month)
 
     echo('Opening input file: {}'.format(config.input_filename))
     file_in = open(config.input_filename, 'r')
@@ -189,11 +196,10 @@ def parse(config, verbose=False):
         es = Elasticsearch([{'host': config.es_host, 'port': config.es_port}], timeout=config.es_timeout,
                            http_auth=awsauth, connection_class=RequestsHttpConnection)
         if config.delete_index:
-            echo('Deleting current index: {}'.format(index_name))
-            es.indices.delete(index_name, ignore=404)
-        es.indices.create(index_name, ignore=400)
-        es.indices.create(config.es_doctype, ignore=400)
-        es.indices.put_mapping(index=config.es_doctype, doc_type=config.es_doctype, body=config.mapping)
+            echo('Deleting current index: {}'.format(config.index_name))
+            es.indices.delete(config.index_name, ignore=404)
+        es.indices.create(config.index_name, ignore=400)
+        es.indices.put_mapping(index=config.index_name, doc_type=config.es_doctype, body=config.mapping)
 
     if verbose:
         progressbar = click.progressbar
@@ -245,7 +251,7 @@ def parse(config, verbose=False):
                         pbar.update(1)
 
             for recno, (success, result) in enumerate(helpers.streaming_bulk(es, documents(),
-                                                                             index=config.es_doctype,
+                                                                             index=config.index_name,
                                                                              doc_type=config.es_doctype,
                                                                              chunk_size=config.bulk_size)):
                 # <recno> integer, the record number (0-based)

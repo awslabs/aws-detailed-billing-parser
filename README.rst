@@ -72,6 +72,15 @@ TODO (Features to incorporate in the dbrparser)
 
 Changes
 -------
+Version 0.6.0 - 2019-03-26
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Bugfix: the last commits broke the compatibility with Elasticsearch 2.3
+This version added the compatibility of ES 2.x and 6.x using 2 different document types
+To use the solution with ES6.x you must add `--es6` in the command line and the index name will be just "billing"
+The default is ES2.x to keep backward compatibility. (the index name will be: billing-<year>-<month>)
+
+
 Version 0.5.4 - 2017-08-29
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

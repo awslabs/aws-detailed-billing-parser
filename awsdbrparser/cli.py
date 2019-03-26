@@ -31,6 +31,7 @@ from .config import OUTPUT_OPTIONS
 from .config import OUTPUT_TO_FILE
 from .config import PROCESS_BY_LINE
 from .config import PROCESS_OPTIONS
+from .config import DEFAULT_ES2
 from .utils import ClickEchoWrapper
 from .utils import display_banner
 from .utils import hints_for
@@ -71,6 +72,7 @@ configure = click.make_pass_decorator(Config, ensure=True)
                    'new (this option will be ignored in bulk processing).')
 @click.option('--awsauth', is_flag=True, default=False,
               help='Access the Elasticsearch with AWS Signed V4 Requests')
+@click.option('--es2/--es6', default=DEFAULT_ES2, help='Define the Document Type to be ingested. Default is Elastic 6.x')
 @click.option('-v', '--version', is_flag=True, default=False, help='Display version number and exit.')
 @click.option('-q', '--quiet', is_flag=True, default=False, help='Runs as silently as possible.')
 @click.option('--fail-fast', is_flag=True, default=False, help='Stop parsing on first index error.')
@@ -87,6 +89,7 @@ def main(config, *args, **kwargs):
 
     if version:
         return
+
 
     # tweak kwargs for expected config object attributes
     kwargs['input_filename'] = kwargs.pop('input', config.input_filename)

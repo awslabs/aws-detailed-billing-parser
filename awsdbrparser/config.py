@@ -17,6 +17,9 @@
 # limitations under the License.
 #
 
+import os
+import json
+
 from datetime import datetime
 
 OUTPUT_TO_FILE = '1'
@@ -38,46 +41,11 @@ PROCESS_OPTIONS = (
 BULK_SIZE = 1000
 ES_TIMEOUT = 30
 
-
-
-ES_DOCTYPE = {
-    "properties": {
-        "LinkedAccountId": {"type": "keyword"},
-        "InvoiceID": {"type": "keyword"},
-        "RecordType": {"type": "keyword"},
-        "RecordId": {"type": "keyword"},
-        "UsageType": {"type": "keyword"},
-        "UsageEndDate": {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"},
-        "ItemDescription": {"type": "keyword"},
-        "ProductName": {"type": "keyword"},
-        "RateId": {"type": "keyword"},
-        "Rate": {"type": "float"},
-        "AvailabilityZone": {"type": "keyword"},
-        "PricingPlanId": {"type": "keyword"},
-        "ResourceId": {"type": "keyword"},
-        "Cost": {"type": "float"},
-        "PayerAccountId": {"type": "keyword"},
-        "SubscriptionId": {"type": "keyword"},
-        "UsageQuantity": {"type": "float"},
-        "Operation": {"type": "keyword"},
-        "ReservedInstance": {"type": "keyword"},
-        "UsageStartDate": {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"},
-        "BlendedCost": {"type": "float"},
-        "BlendedRate": {"type": "float"},
-        "UnBlendedCost": {"type": "float"},
-        "UnBlendedRate": {"type": "float"}
-    }, "dynamic_templates": [
-        {
-            "notanalyzed": {
-                "match": "*",
-                "match_mapping_type": "string",
-                "mapping": {
-                    "type": "string",
-                    "index": "not_analyzed"
-                }
-            }
-        }
-    ]
+DEFAULT_ES2 = True
+DATA_PATH = 'data'
+DOCTYPE_FILES = {
+    '2': 'dbr_doctype_es2x.json',
+    '6': 'dbr_doctype_es6x.json'
 }
 
 """
@@ -119,13 +87,13 @@ class Config(object):
         # Use AWS Signed requests to access the Elasticsearch
         self.awsauth = False
 
-        # Run Business Inteligence on the lineitems
+        # Run Business Intelligence on the line items
         self.analytics = False
 
         # Time to wait for the analytics process. Default is 30 minutes
         self.analytics_timeout = 30
 
-        # Run Business Inteligence Only
+        # Run Business Intelligence Only
         self.bi_only = False
 
         # delete index flag indicates whether or not the current elasticsearch
@@ -153,10 +121,12 @@ class Config(object):
                 "InvoiceTotal",
                 "Rounding",
                 "AccountTotal"]}
+        self._es2 = False
+        self._doctype = None
 
     @property
     def mapping(self):
-        return {self.es_doctype: ES_DOCTYPE}
+        return {self.es_doctype: self.doctype}
 
     @property
     def output_type(self):
@@ -197,6 +167,46 @@ class Config(object):
     @property
     def output_filename(self):
         return self._output_filename or self._sugest_filename('.json')
+
+
+    @property
+    def doctype(self):
+        return self._doctype
+
+    @doctype.setter
+    def doctype(self, version):
+        if not version in ('2', '6'):
+            raise Exception('Invalid document type version.')
+
+        try:
+            filename = os.path.join(os.path.dirname(__file__), DATA_PATH, DOCTYPE_FILES[version])
+            self._doctype = json.load(open(filename))
+        except IOError:
+            print('Unable to load Elastic Search Doctype')
+            raise
+
+    @property
+    def es2(self):
+        return self._es2
+
+    @es2.setter
+    def es2(self, is_es2x):
+        self._es2 = is_es2x
+        if self._es2:
+            version = '2'
+        else:
+            version = '6'
+        self.doctype = version
+
+    @property
+    def index_name(self):
+        if self.es2:
+            # if using Elasticsearch 2.x the index is composed by <index-name>-<year>-<month>
+            return '{}-{:d}-{:02d}'.format(self.es_index, self.es_year, self.es_month)
+        else:
+            # if using Elasticsearch 6.x the index is just the prefix <index-name>
+            return self.es_index
+
 
     @output_filename.setter
     def output_filename(self, value):

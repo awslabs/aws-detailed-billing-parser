@@ -61,6 +61,7 @@ setup(
     description='Parse DBR and send to Elasticsearch or dumps to JSON',
     long_description=read('README.rst'),
     packages=find_packages(exclude=['tests']),
+    package_data={'awsdbrparser': ['data/*.json']},
     include_package_data=True,
     zip_safe=False,
     platforms='any',

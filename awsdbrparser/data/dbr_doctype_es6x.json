@@ -1,0 +1,39 @@
+{
+    "properties": {
+        "LinkedAccountId": {"type": "keyword"},
+        "InvoiceID": {"type": "keyword"},
+        "RecordType": {"type": "keyword"},
+        "RecordId": {"type": "keyword"},
+        "UsageType": {"type": "keyword"},
+        "UsageEndDate": {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"},
+        "ItemDescription": {"type": "keyword"},
+        "ProductName": {"type": "keyword"},
+        "RateId": {"type": "keyword"},
+        "Rate": {"type": "float"},
+        "AvailabilityZone": {"type": "keyword"},
+        "PricingPlanId": {"type": "keyword"},
+        "ResourceId": {"type": "keyword"},
+        "Cost": {"type": "float"},
+        "PayerAccountId": {"type": "keyword"},
+        "SubscriptionId": {"type": "keyword"},
+        "UsageQuantity": {"type": "float"},
+        "Operation": {"type": "keyword"},
+        "ReservedInstance": {"type": "keyword"},
+        "UsageStartDate": {"type": "date", "format": "YYYY-MM-dd HH:mm:ss"},
+        "BlendedCost": {"type": "float"},
+        "BlendedRate": {"type": "float"},
+        "UnBlendedCost": {"type": "float"},
+        "UnBlendedRate": {"type": "float"}
+    }, "dynamic_templates": [
+        {
+            "notanalyzed": {
+                "match": "*",
+                "match_mapping_type": "string",
+                "mapping": {
+                    "type": "string",
+                    "index": "not_analyzed"
+                }
+            }
+        }
+    ]
+}
