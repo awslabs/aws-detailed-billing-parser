@@ -102,8 +102,12 @@ def analytics(config, echo):
     # Some DBR files has Cost (Single Account) and some has (Un)BlendedCost (Consolidated Account)
     # In this case we try to process both, but one will be zero and we need to check
     # TODO: use a single variable and an flag to output Cost or Unblended
-    if not es.indices.exists(index='ec2_per_usd'):
-        es.indices.create('ec2_per_usd', ignore=400, body={
+    if config.es2:
+        index_name = config.index_name
+    else:
+        index_name = 'ec2_per_usd'
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index_name, ignore=400, body={
             "mappings": {
                 "ec2_per_usd": {
                     "properties": {
@@ -115,7 +119,7 @@ def analytics(config, echo):
     for k, v in analytics_daytime.items():
         result_cost = 1.0 / (v.get('Cost') / v.get('Count')) if v.get('Cost') else 0.00
         result_unblended = 1.0 / (v.get('Unblended') / v.get('Count')) if v.get('Unblended') else 0.0
-        response = es.index(index='ec2_per_usd', doc_type='ec2_per_usd',
+        response = es.index(index=index_name, doc_type='ec2_per_usd',
                             body={'UsageStartDate': k,
                                   'EPU_Cost': result_cost,
                                   'EPU_UnBlended': result_unblended})
@@ -127,8 +131,12 @@ def analytics(config, echo):
     # The calculation is 1 - min / max EC2 instances per day
     # The number of EC2 instances has been calculated previously
     #
-    if not es.indices.exists(index='elasticity'):
-        es.indices.create('elasticity', ignore=400, body={
+    if config.es2:
+        index_name = config.index_name
+    else:
+        index_name = 'elasticity'
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index_name, ignore=400, body={
             "mappings": {
                 "elasticity": {
                     "properties": {
@@ -149,7 +157,7 @@ def analytics(config, echo):
         spot_coverage = float(analytics_day_only[k]["Spot"]) / float(analytics_day_only[k]["Count"])
 
 
-        response = es.index(index='elasticity', doc_type='elasticity',
+        response = es.index(index=index_name, doc_type='elasticity',
                             body={'UsageStartDate': k + ' 12:00:00',
                                   'Elasticity': elasticity,
                                   'ReservedInstanceCoverage': ri_coverage,

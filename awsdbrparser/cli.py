@@ -72,7 +72,7 @@ configure = click.make_pass_decorator(Config, ensure=True)
                    'new (this option will be ignored in bulk processing).')
 @click.option('--awsauth', is_flag=True, default=False,
               help='Access the Elasticsearch with AWS Signed V4 Requests')
-@click.option('--es2/--es6', default=DEFAULT_ES2, help='Define the Document Type to be ingested. Default is Elastic 6.x')
+@click.option('--es2/--es6', default=DEFAULT_ES2, help='Define the Document Type to be ingested. Default is Elastic 2.x')
 @click.option('-v', '--version', is_flag=True, default=False, help='Display version number and exit.')
 @click.option('-q', '--quiet', is_flag=True, default=False, help='Runs as silently as possible.')
 @click.option('--fail-fast', is_flag=True, default=False, help='Stop parsing on first index error.')
